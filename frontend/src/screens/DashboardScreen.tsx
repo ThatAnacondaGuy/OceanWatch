@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Droplet, Navigation, CheckCircle2, Clock, Search, ChevronRight, FileText, Satellite, MapPin, Download, Wind, Activity, Compass } from 'lucide-react';
 import MapLibreMap from '../components/map/MapLibreMap';
+import { 
+  Droplet, Ship, ShieldCheck, Clock, Calendar, 
+  ChevronDown, ChevronRight,
+  Wind, Waves, Compass, ArrowRight, MapPin, Search as SearchIcon, FileText, Download
+} from 'lucide-react';
+import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 
 export default function DashboardScreen() {
@@ -11,245 +16,311 @@ export default function DashboardScreen() {
 
   if (!data) return null;
 
+  const currentCase = data.case;
+  const sourceVessel = data.attribution.results[0];
+
   return (
-    <div className="flex flex-col h-full p-6 gap-6 overflow-y-auto">
-      {/* Top Metrics Row */}
+    <div className="flex flex-col h-full bg-slate-50 overflow-y-auto overflow-x-hidden p-4 gap-4">
+      {/* KPI ROW */}
       <div className="flex gap-4 shrink-0">
-        <div className="flex-1">
-          <StatCard icon={<Droplet className="w-6 h-6" />} label="Active Oil Spills" value="1" badge="Active" badgeColor="red" bg="bg-red-50" fg="text-red-500" subtext="In Demo Scene" />
-        </div>
-        <div className="flex-1">
-          <StatCard icon={<Navigation className="w-6 h-6" />} label="Vessels Analyzed" value="5" trend="+4" trendColor="text-emerald-500" bg="bg-blue-50" fg="text-blue-500" subtext="In View" />
-        </div>
-        <div className="flex-1">
-          <StatCard icon={<CheckCircle2 className="w-6 h-6" />} label="Detection Accuracy" value="94.7%" bg="bg-emerald-50" fg="text-emerald-500" subtext="AI Model (SAR)" />
-        </div>
-        <div className="flex-1">
-          <StatCard icon={<Clock className="w-6 h-6" />} label="Avg. Processing Time" value="28s" bg="bg-purple-50" fg="text-purple-500" subtext="per image" />
-        </div>
-        <div className="flex-1 bg-white rounded-lg border border-slate-200 p-4 shadow-sm flex flex-col justify-center items-end">
-          <div className="text-right">
-             <div className="text-sm font-bold text-navy-900">{new Date(data.case.date).toLocaleDateString('en-US', {weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})}</div>
-             <div className="text-[10px] text-slate-500 font-medium mb-1">11:24 UTC</div>
-             <div className="flex items-center gap-1.5 justify-end mt-1">
-               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-               <span className="text-[11px] font-bold text-navy-900">System Operational</span>
-             </div>
+        <MetricCard 
+          icon={<div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600"><Droplet className="w-5 h-5 fill-current" /></div>}
+          title="Active Oil Spills"
+          value="1"
+          trend="vs. last 24 hrs"
+          trendVal="+1"
+          trendColor="text-red-500"
+        />
+        <MetricCard 
+          icon={<div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700"><Ship className="w-5 h-5 fill-current" /></div>}
+          title="Vessels Analyzed"
+          value="5"
+          trend="today"
+          trendVal="+5"
+          trendColor="text-emerald-500"
+        />
+        <MetricCard 
+          icon={<div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600"><ShieldCheck className="w-5 h-5 fill-current" /></div>}
+          title="Detection Accuracy"
+          value="94.7%"
+          trend="AI Model (Sentinel-1/2)"
+        />
+        <MetricCard 
+          icon={<div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600"><Clock className="w-5 h-5" /></div>}
+          title="Avg. Processing Time"
+          value="28 seconds"
+          trend="per image"
+        />
+        <div className="flex-1 bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center min-w-[200px]">
+          <div className="flex items-center gap-3 mb-2">
+            <Calendar className="w-5 h-5 text-slate-500" />
+            <span className="font-bold text-navy-900 text-sm">Tue, 28 Jan 2017<br/>04:00 UTC</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-bold text-navy-900">
+            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
+            System Operational
           </div>
         </div>
       </div>
 
-      <div className="flex gap-6 flex-1 min-h-0">
-        {/* Left Column (Main Map/Sat views) */}
-        <div className="flex-[2] flex flex-col gap-4 min-w-0">
-          <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-[400px]">
-             {/* Tabs & Controls */}
-             <div className="flex items-center justify-between px-2 pt-2 border-b border-slate-100 bg-white z-10 shrink-0">
-                <div className="flex gap-1">
-                   {['Live Map', 'Satellite View', 'Analysis Layers', 'Historical Data'].map(tab => (
-                     <button key={tab} onClick={() => setActiveTab(tab)}
-                       className={`px-4 py-2.5 text-xs font-bold transition-colors border-b-2 ${activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-navy-900 hover:bg-slate-50 rounded-t'}`}>
-                       {tab}
-                     </button>
-                   ))}
-                </div>
-                <div className="flex items-center gap-2 pb-1 pr-2">
-                   <div className="relative">
-                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
-                      <input type="text" placeholder="Search location, vessel..." className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded w-48 focus:outline-none focus:border-blue-400 text-navy-900" />
-                   </div>
-                   <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-bold text-slate-600 hover:bg-slate-50">Layers</button>
-                   <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-bold text-slate-600 hover:bg-slate-50">Last 24 Hours</button>
-                </div>
-             </div>
+      {/* MIDDLE ROW */}
+      <div className="flex gap-4 min-h-[500px]">
+        
+        {/* MAP CONTAINER */}
+        <div className="flex-[2.2] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden relative">
+          {/* Map Header / Tabs */}
+          <div className="h-12 border-b border-slate-200 flex items-center px-2 bg-white shrink-0 justify-between">
+            <div className="flex h-full">
+              {['Live Map', 'Satellite View', 'Analysis Layers', 'Historical Data'].map(tab => (
+                <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={clsx(
+                    "px-4 h-full text-xs font-bold transition-colors border-b-2",
+                    activeTab === tab 
+                      ? "border-blue-600 text-blue-700 bg-blue-50/50" 
+                      : "border-transparent text-slate-500 hover:text-navy-900 hover:bg-slate-50"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
             
-            <div className="flex-1 relative bg-slate-100">
-               {activeTab === 'Live Map' && (
-                 <div className="absolute inset-0">
-                   <MapLibreMap />
-                 </div>
-               )}
-               {activeTab === 'Satellite View' && <SatelliteViewTab data={data} />}
-               {activeTab !== 'Live Map' && activeTab !== 'Satellite View' && (
-                 <div className="flex items-center justify-center h-full text-slate-400 italic">Not available in demo</div>
-               )}
+            <div className="relative mr-2">
+              <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text" 
+                placeholder="Search location, vessel or incident..."
+                className="pl-9 pr-4 py-1.5 text-xs border border-slate-200 rounded-full w-64 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
             </div>
           </div>
-
-          <div className="flex gap-4 shrink-0 h-32">
-             <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex flex-col">
-                <h3 className="text-xs font-bold text-navy-900 mb-3">Wind & Ocean Conditions</h3>
-                <div className="flex items-center justify-between flex-1">
-                   <div className="flex items-center gap-3">
-                      <Wind className="w-6 h-6 text-blue-400" />
-                      <div><p className="text-[10px] text-slate-500 font-bold uppercase">Wind Speed</p><p className="font-black text-navy-900">{data.environment.wind_speed.toFixed(1)} m/s</p><p className="text-[9px] text-slate-400">({data.environment.wind_direction.toFixed(0)}°)</p></div>
-                   </div>
-                   <div className="w-px h-8 bg-slate-200" />
-                   <div className="flex items-center gap-3">
-                      <Activity className="w-6 h-6 text-emerald-400" />
-                      <div><p className="text-[10px] text-slate-500 font-bold uppercase">Wave Height</p><p className="font-black text-navy-900">1.4 m</p><p className="text-[9px] text-slate-400">Demo</p></div>
-                   </div>
-                   <div className="w-px h-8 bg-slate-200" />
-                   <div className="flex items-center gap-3">
-                      <Compass className="w-6 h-6 text-indigo-400" />
-                      <div><p className="text-[10px] text-slate-500 font-bold uppercase">Surface Current</p><p className="font-black text-navy-900">{data.environment.current_speed.toFixed(2)} m/s</p><p className="text-[9px] text-slate-400">({data.environment.current_direction.toFixed(0)}°)</p></div>
-                   </div>
-                </div>
-             </div>
-             
-             <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex flex-col">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-bold text-navy-900">System Notifications</h3>
-                  <button className="text-[10px] font-bold text-blue-600 hover:underline">View All &rarr;</button>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2">
-                   <NotificationItem color="bg-red-500" text="New oil spill detected (ENNORE-2017-DEMO)" time="2 hours ago" />
-                   <NotificationItem color="bg-blue-500" text="Vessel match found: DEMO-MMSI-001" time="3 hours ago" />
-                   <NotificationItem color="bg-emerald-500" text="Model processing completed (Sentinel-1)" time="5 hours ago" />
-                </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Right Panel */}
-        <div className="w-80 flex flex-col gap-4 shrink-0 overflow-y-auto">
-          {/* Selected Incident */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-navy-900 text-sm">Selected Incident</h3>
-              <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded uppercase">Active</span>
-            </div>
-            <div className="p-4 flex flex-col gap-3 text-xs">
-              <Row label="Incident ID" value={data.case.case_id} />
-              <Row label="Detected On" value={data.case.date} />
-              <Row label="Location" value={`${data.slick.centroid.lat.toFixed(2)}°N, ${data.slick.centroid.lon.toFixed(2)}°E\nEnnore (Inside EEZ)`} />
-              <Row label="Estimated Area" value={`${data.slick.area} px (Relative)`} />
-              <Row label="Likely Source" value={`Vessel (Confidence: ${(data.attribution.results[0].attribution_score * 100).toFixed(0)}%)`} />
-              <Row label="Status" value="Under Investigation" />
-            </div>
-            <div className="p-4 pt-2 flex gap-2">
-              <button onClick={() => navigate('/incidents')} className="flex-1 bg-navy-900 text-white text-xs font-bold py-2 rounded shadow-sm hover:bg-navy-800 transition-colors">View Details</button>
-              <button disabled className="flex-1 bg-white border border-slate-200 text-slate-400 text-xs font-bold py-2 rounded cursor-not-allowed flex items-center justify-center gap-1">
-                <FileText className="w-3.5 h-3.5" /> Generate Report
+          
+          {/* Map Area */}
+          <div className="flex-1 relative bg-slate-900">
+            <MapLibreMap showLayerPanel={false} />
+            
+            {/* Map Overlay Controls */}
+            <div className="absolute top-4 right-4 flex gap-2 z-10">
+              <button className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
+                Layers <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+              <button className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
+                Filter <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+              <button className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
+                Last 24 Hours <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </div>
+            
+            {/* Layer Menu Example Panel */}
+            <div className="absolute top-14 right-32 bg-white rounded-lg shadow-lg border border-slate-200 w-48 p-2 z-10 flex flex-col gap-1 text-xs">
+               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">True Color</span>
+               </label>
+               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                  <input type="radio" name="layer" defaultChecked className="accent-blue-600" /> <span className="font-bold text-navy-900">Oil Spill (AI)</span>
+               </label>
+               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">Vessel Tracking</span>
+               </label>
+               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">Wind & Currents</span>
+               </label>
+               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">EEZ Boundaries</span>
+               </label>
+            </div>
           </div>
-
+        </div>
+        
+        {/* RIGHT PANEL */}
+        <div className="flex-1 flex flex-col gap-4">
+          
+          {/* Selected Incident */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+               <h3 className="font-black text-navy-900 text-base">Selected Incident</h3>
+               <span className="bg-red-50 text-red-600 font-bold px-2.5 py-1 rounded-md text-[10px] uppercase tracking-widest border border-red-100">Active</span>
+            </div>
+            
+            <div className="flex flex-col gap-3 text-xs mb-6">
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Incident ID</span>
+                  <span className="font-bold text-navy-900">ENNORE-2017-DEMO</span>
+               </div>
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Detected On</span>
+                  <span className="font-bold text-navy-900">28 Jan 2017, 04:00 UTC</span>
+               </div>
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Location</span>
+                  <div className="text-right">
+                     <div className="font-bold text-navy-900">{currentCase.location}</div>
+                     <div className="text-[10px] text-slate-500 mt-0.5">13.27° N, 80.34° E</div>
+                  </div>
+               </div>
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Estimated Area</span>
+                  <span className="font-bold text-navy-900">{data.slick.area} px (Relative)</span>
+               </div>
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Likely Source</span>
+                  <span className="font-bold text-navy-900 flex items-center gap-1">{sourceVessel?.id.replace('DEMO-','')} <span className="text-[10px] text-slate-400 font-normal">(Confidence: {(sourceVessel.attribution_score*100).toFixed(0)}%)</span></span>
+               </div>
+               <div className="flex justify-between">
+                  <span className="text-slate-500">Status</span>
+                  <span className="font-bold text-amber-600">Synthetic Demo</span>
+               </div>
+            </div>
+            
+            <div className="flex gap-3 mt-auto">
+               <button 
+                 onClick={() => navigate('/incidents')}
+                 className="flex-1 bg-navy-900 hover:bg-navy-800 text-white font-bold py-2.5 rounded shadow text-xs transition-colors flex justify-center items-center gap-2">
+                 View Details
+               </button>
+               <button className="flex-1 bg-white hover:bg-slate-50 text-navy-900 border border-slate-200 font-bold py-2.5 rounded shadow-sm text-xs transition-colors flex justify-center items-center gap-2">
+                 <FileText className="w-3.5 h-3.5" /> Generate Report
+               </button>
+            </div>
+          </div>
+          
           {/* Recent Detections */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-navy-900 text-sm">Recent Detections</h3>
-              <button className="text-[10px] font-bold text-blue-600 hover:underline">View All &rarr;</button>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex-1 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+               <h3 className="font-black text-navy-900 text-sm">Recent Detections</h3>
+               <button className="text-blue-600 text-[11px] font-bold flex items-center gap-1 hover:underline">
+                 View All <ArrowRight className="w-3 h-3" />
+               </button>
             </div>
-            <div className="p-2 flex flex-col">
-               <DetectionRow id={data.case.case_id} area={`${data.slick.area} px`} time="Demo" status="Active" color="bg-red-500" statusColor="text-red-600 bg-red-50" />
-               <DetectionRow id="OS-2025-090" area="3.1 km²" time="N/A" status="Monitoring" color="bg-amber-500" statusColor="text-amber-600 bg-amber-50" />
-               <DetectionRow id="OS-2025-089" area="0.8 km²" time="N/A" status="Monitoring" color="bg-amber-500" statusColor="text-amber-600 bg-amber-50" />
-               <DetectionRow id="OS-2025-088" area="0.2 km²" time="N/A" status="Resolved" color="bg-emerald-500" statusColor="text-emerald-600 bg-emerald-50" />
+            
+            <div className="flex flex-col gap-1 flex-1 overflow-y-auto">
+               <div className="flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-100">
+                  <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                  <span className="font-bold text-navy-900 text-xs w-28 shrink-0">ENNORE-2017</span>
+                  <span className="text-[11px] text-slate-500 w-16">{data.slick.area} px</span>
+                  <span className="text-[11px] text-slate-400 flex-1">Demo Case</span>
+                  <span className="bg-red-50 text-red-600 text-[9px] font-bold px-2 py-0.5 rounded border border-red-100">Active</span>
+                  <ChevronRight className="w-4 h-4 text-slate-300 ml-1" />
+               </div>
+               
+               <div className="flex items-center justify-center p-4 text-[10px] text-slate-400 font-medium italic border-t border-slate-50 mt-2">
+                  Additional incidents unavailable in current demo dataset.
+               </div>
             </div>
           </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col p-4">
-            <h3 className="font-bold text-navy-900 text-sm mb-3">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => navigate('/vessels')} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-bold py-2 rounded border border-emerald-200 flex items-center justify-center gap-1.5"><Search className="w-3.5 h-3.5" /> Search Vessel</button>
-              <button onClick={() => navigate('/monitoring')} className="bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-xs font-bold py-2 rounded border border-blue-200 flex items-center justify-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Mark Area</button>
-              <button disabled className="bg-purple-50 text-purple-700 opacity-50 text-xs font-bold py-2 rounded border border-purple-200 cursor-not-allowed flex items-center justify-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Generate Report</button>
-              <button onClick={() => window.open('/api/demo/ennore', '_blank')} className="bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-bold py-2 rounded border border-amber-200 flex items-center justify-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export Data</button>
-            </div>
-          </div>
+          
         </div>
       </div>
-    </div>
-  );
-}
 
-function StatCard({ icon, label, value, subtext, bg, fg, trend, trendColor, badge, badgeColor }: any) {
-  const bc = badgeColor === 'red' ? 'bg-red-50 text-red-500' : badgeColor === 'emerald' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-500';
-  return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm flex items-start gap-3 h-full">
-      <div className={`w-12 h-12 rounded-full ${bg} ${fg} flex items-center justify-center shrink-0`}>{icon}</div>
-      <div className="flex flex-col h-full justify-between flex-1">
-        <p className="text-[11px] font-bold text-navy-900 uppercase tracking-wide">{label}</p>
-        <div className="flex items-baseline gap-2 mt-1">
-          <p className="text-3xl font-black text-navy-900 leading-none">{value}</p>
-          {badge && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${bc}`}>{badge}</span>}
-          {trend && <span className={`text-[10px] font-bold ${trendColor}`}>{trend}</span>}
-        </div>
-        <p className="text-[10px] text-slate-400 mt-1">{subtext}</p>
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-start gap-4">
-       <span className="text-slate-500 shrink-0">{label}</span>
-       <span className="font-bold text-navy-900 text-right whitespace-pre-line">{value}</span>
-    </div>
-  );
-}
-
-function NotificationItem({ color, text, time }: any) {
-   return (
-      <div className="flex items-center gap-2">
-         <div className={`w-2 h-2 rounded-full ${color} shrink-0`} />
-         <span className="text-xs font-medium text-navy-900 truncate flex-1">{text}</span>
-         <span className="text-[9px] text-slate-400 shrink-0">{time}</span>
-      </div>
-   );
-}
-
-function DetectionRow({ id, area, time, status, color, statusColor }: any) {
-   return (
-      <div className="flex items-center justify-between p-3 hover:bg-slate-50 rounded cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
-         <div className="flex items-center gap-3">
-            <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
-            <div className="flex flex-col">
-               <span className="text-xs font-bold text-navy-900">{id}</span>
-               <span className="text-[10px] text-slate-500">{area} • {time}</span>
+      {/* BOTTOM ROW */}
+      <div className="flex gap-4 shrink-0">
+         {/* Wind & Ocean */}
+         <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col">
+            <h3 className="font-black text-navy-900 text-sm mb-3">Wind & Ocean Conditions</h3>
+            <div className="flex gap-4 mt-1">
+               <div className="flex gap-3 items-center flex-1">
+                  <Wind className="w-8 h-8 text-blue-500" />
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Wind Speed</span>
+                     <span className="text-lg font-black text-navy-900 leading-none">{data.environment.wind_speed.toFixed(1)} m/s</span>
+                     <span className="text-[10px] text-slate-400 font-medium mt-1">({data.environment.wind_direction.toFixed(0)}°)</span>
+                  </div>
+               </div>
+               
+               <div className="w-px bg-slate-100" />
+               
+               <div className="flex gap-3 items-center flex-1 pl-2">
+                  <Waves className="w-8 h-8 text-blue-500" />
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Wave Height</span>
+                     <span className="text-lg font-black text-navy-900 leading-none">N/A</span>
+                     <span className="text-[10px] text-slate-400 font-medium mt-1">(Demo)</span>
+                  </div>
+               </div>
+               
+               <div className="w-px bg-slate-100" />
+               
+               <div className="flex gap-3 items-center flex-1 pl-2">
+                  <Compass className="w-8 h-8 text-blue-500" />
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Surface Current</span>
+                     <span className="text-lg font-black text-navy-900 leading-none">{data.environment.current_speed.toFixed(2)} m/s</span>
+                     <span className="text-[10px] text-slate-400 font-medium mt-1">({data.environment.current_direction.toFixed(0)}°)</span>
+                  </div>
+               </div>
             </div>
          </div>
-         <div className="flex items-center gap-2">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${statusColor}`}>{status}</span>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+         
+         {/* System Notifications */}
+         <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col">
+            <div className="flex justify-between items-center mb-3">
+               <h3 className="font-black text-navy-900 text-sm">System Notifications</h3>
+               <button className="text-blue-600 text-[11px] font-bold flex items-center gap-1 hover:underline">
+                 View All <ArrowRight className="w-3 h-3" />
+               </button>
+            </div>
+            <div className="flex flex-col gap-2.5">
+               <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-red-500 rounded-full shrink-0" />
+                  <span className="text-xs font-bold text-navy-900 flex-1 truncate">New oil spill detected (ENNORE-2017-DEMO)</span>
+                  <span className="text-[10px] text-slate-400">04:00 Z</span>
+               </div>
+               <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
+                  <span className="text-xs font-medium text-slate-700 flex-1 truncate">Vessel match found: {sourceVessel?.id.replace('DEMO-','')}</span>
+                  <span className="text-[10px] text-slate-400">04:01 Z</span>
+               </div>
+               <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
+                  <span className="text-xs font-medium text-slate-700 flex-1 truncate">Model processing completed (Sentinel-1)</span>
+                  <span className="text-[10px] text-slate-400">03:55 Z</span>
+               </div>
+            </div>
+         </div>
+         
+         {/* Quick Actions */}
+         <div className="flex-[0.8] bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col">
+            <h3 className="font-black text-navy-900 text-sm mb-3">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-2 flex-1">
+               <button 
+                 onClick={() => navigate('/vessels')}
+                 className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors rounded-lg border border-emerald-100 text-[11px] font-bold">
+                  <SearchIcon className="w-3.5 h-3.5" /> Search Vessel
+               </button>
+               <button className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg border border-blue-100 text-[11px] font-bold">
+                  <MapPin className="w-3.5 h-3.5" /> Mark Area
+               </button>
+               <button className="flex items-center justify-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors rounded-lg border border-purple-100 text-[11px] font-bold">
+                  <FileText className="w-3.5 h-3.5" /> Generate Report
+               </button>
+               <button 
+                 onClick={() => window.open('/api/demo/ennore', '_blank')}
+                 className="flex items-center justify-center gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors rounded-lg border border-amber-100 text-[11px] font-bold">
+                  <Download className="w-3.5 h-3.5" /> Export Data
+               </button>
+            </div>
          </div>
       </div>
-   );
+    </div>
+  );
 }
 
-function SatelliteViewTab({ data }: { data: any }) {
-  const [view, setView] = useState<'VV' | 'VH' | 'Overlay'>('Overlay');
-
+function MetricCard({ icon, title, value, trend, trendVal, trendColor }: any) {
   return (
-    <div className="w-full h-full flex flex-col bg-slate-900 text-white relative">
-      <div className="absolute top-4 left-4 z-10 flex bg-slate-800 rounded border border-slate-700 p-1 gap-1 shadow-lg">
-        <button onClick={() => setView('VV')} className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${view === 'VV' ? 'bg-blue-600' : 'hover:bg-slate-700 text-slate-300'}`}>VV Band</button>
-        <button onClick={() => setView('VH')} className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${view === 'VH' ? 'bg-blue-600' : 'hover:bg-slate-700 text-slate-300'}`}>VH Band</button>
-        <button onClick={() => setView('Overlay')} className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${view === 'Overlay' ? 'bg-blue-600' : 'hover:bg-slate-700 text-slate-300'}`}>Detection Overlay</button>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center p-8 bg-black/50">
-        {view === 'VH' ? (
-          <div className="text-center text-slate-500 max-w-sm">
-            <Satellite className="w-12 h-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-bold">VH Cross-Polarization Unavailable</p>
-            <p className="text-xs mt-2">The current Ennore synthetic dataset does not contain valid VH backscatter data.</p>
-          </div>
-        ) : (
-          <div className="relative border border-slate-700 rounded shadow-2xl max-h-full max-w-full inline-block">
-            <img src={data.sar.preview_asset} alt="SAR Base" className="object-contain max-h-[60vh]" />
-            {view === 'Overlay' && (
-              <img src={data.sar.unet_probability_asset} alt="Model Overlay" className="absolute inset-0 w-full h-full object-contain opacity-70 mix-blend-screen" />
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="absolute bottom-4 left-4 z-10 text-[10px] text-slate-400">
-        Source: {data.sar.source} · Mode: {data.sar.polarization}
+    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between flex-1 min-w-[180px]">
+      <div className="flex gap-3 items-start">
+         {icon}
+         <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-slate-500 tracking-wide uppercase mb-1">{title}</span>
+            <div className="flex items-baseline gap-2">
+               <span className="text-2xl font-black text-navy-900 leading-none">{value}</span>
+               {trendVal && <span className={clsx("text-xs font-bold flex items-center gap-0.5", trendColor)}>{trendVal}</span>}
+            </div>
+            <span className="text-[10px] text-slate-400 mt-1">{trend}</span>
+         </div>
       </div>
     </div>
   );
