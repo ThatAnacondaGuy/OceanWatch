@@ -5,24 +5,27 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useApp } from '../../context/AppContext';
 import { ChevronDown, Droplet } from 'lucide-react';
 
-const SATELLITE_STYLE: any = {
+const DARK_STYLE: any = {
   version: 8,
   sources: {
-    'esri-satellite': {
+    'osm-tiles': {
       type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       tileSize: 256,
-      attribution: 'Tiles © Esri'
-    },
-    'carto-labels': {
-      type: 'raster',
-      tiles: ['https://cartodb-basemaps-a.global.ssl.fastly.net/dark_only_labels/{z}/{x}/{y}.png'],
-      tileSize: 256
+      attribution: '&copy; OpenStreetMap'
     }
   },
   layers: [
-    { id: 'satellite-layer', type: 'raster', source: 'esri-satellite', paint: { 'raster-saturation': -0.2 } },
-    { id: 'labels-layer', type: 'raster', source: 'carto-labels', paint: { 'raster-opacity': 0.7 } }
+    {
+      id: 'osm-layer',
+      type: 'raster',
+      source: 'osm-tiles',
+      paint: {
+        'raster-saturation': -1,
+        'raster-brightness-max': 0.2,
+        'raster-opacity': 0.9,
+      }
+    }
   ]
 };
 
@@ -71,7 +74,7 @@ export default function DashboardMap() {
 
     const m = new maplibregl.Map({
       container: mapContainer.current,
-      style: SATELLITE_STYLE,
+      style: DARK_STYLE,
       // Center/zoom will be set dynamically via fitBounds
       pitch: 0,
       interactive: true,
@@ -377,45 +380,45 @@ export default function DashboardMap() {
         <div className="relative">
           <button 
             onClick={() => { setPanelOpen(!panelOpen); setFilterOpen(false); setTimeOpen(false); }}
-            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-slate-900/95 text-slate-200 border border-slate-700 rounded shadow-lg hover:bg-slate-800 font-medium text-sm transition-colors"
           >
             <span>Layers</span>
             <ChevronDown size={16} />
           </button>
           
           {panelOpen && (
-            <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded shadow-lg p-4 border border-gray-100 flex flex-col space-y-3 z-50">
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+            <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900/95 text-slate-200 rounded shadow-2xl p-4 border border-slate-700 flex flex-col space-y-3 z-50">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.sar} onChange={e => setLayers({ ...layers, sar: e.target.checked })} />
                 <span>SAR Background</span>
               </label>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.unet} onChange={e => setLayers({ ...layers, unet: e.target.checked })} />
                 <span>U-Net Model Mask</span>
               </label>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.slick} onChange={e => setLayers({ ...layers, slick: e.target.checked })} />
                 <span>Oil Spill Polygon</span>
               </label>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.driftOrigin} onChange={e => setLayers({ ...layers, driftOrigin: e.target.checked })} />
                 <span>Backward Drift Origin</span>
               </label>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.driftHeatmap} onChange={e => setLayers({ ...layers, driftHeatmap: e.target.checked })} />
                 <span>Drift Heatmap</span>
               </label>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.driftForecast} onChange={e => setLayers({ ...layers, driftForecast: e.target.checked })} />
                 <span>Forward Forecast (+4h)</span>
               </label>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-sm text-slate-300 font-medium cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                   checked={layers.vesselTracks} onChange={e => setLayers({ ...layers, vesselTracks: e.target.checked })} />
                 <span>Vessel Tracks</span>
@@ -428,7 +431,7 @@ export default function DashboardMap() {
         <div className="relative">
           <button 
             onClick={() => { setFilterOpen(!filterOpen); setPanelOpen(false); setTimeOpen(false); }}
-            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-slate-900/95 text-slate-200 border border-slate-700 rounded shadow-lg hover:bg-slate-800 font-medium text-sm transition-colors"
           >
             <span>Filter</span>
             <ChevronDown size={16} />
@@ -439,7 +442,7 @@ export default function DashboardMap() {
         <div className="relative">
           <button 
             onClick={() => { setTimeOpen(!timeOpen); setPanelOpen(false); setFilterOpen(false); }}
-            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-slate-900/95 text-slate-200 border border-slate-700 rounded shadow-lg hover:bg-slate-800 font-medium text-sm transition-colors"
           >
             <span>Case Timeline</span>
             <ChevronDown size={16} />
@@ -452,39 +455,39 @@ export default function DashboardMap() {
       <div className="absolute bottom-6 left-4 z-10 w-48">
         <button 
           onClick={() => setLegendOpen(!legendOpen)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 bg-slate-900/95 text-slate-200 border border-slate-700 rounded shadow-lg hover:bg-slate-800 font-medium text-sm transition-colors"
         >
           <span className="flex items-center"><Droplet size={14} className="mr-2" /> Legend</span>
           <ChevronDown size={16} className={`transform transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
         </button>
         
         {legendOpen && (
-          <div className="mt-2 bg-white rounded shadow-lg p-3 border border-gray-100 flex flex-col space-y-2">
-            <div className="flex items-center text-xs text-gray-600">
+          <div className="mt-2 bg-slate-900/95 text-slate-200 rounded shadow-2xl p-3 border border-slate-700 flex flex-col space-y-2">
+            <div className="flex items-center text-xs text-slate-400">
               <span className="w-3 h-3 bg-[#ff2200] opacity-80 mr-2 rounded-sm border border-[#ff4500]"></span>
               Oil Spill
             </div>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-slate-400">
               <span className="w-3 h-3 bg-[#00ffff] opacity-80 mr-2 rounded-sm border border-[#00ffff]"></span>
               Drift Origin
             </div>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-slate-400">
               <div className="w-3 h-3 bg-gradient-to-r from-yellow-300 to-red-500 mr-2 rounded-sm"></div>
               Drift Heatmap
             </div>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-slate-400">
               <span className="w-3 h-3 bg-[#ff00ff] opacity-50 mr-2 rounded-sm"></span>
               Forecast
             </div>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-slate-400">
               <span className="w-3 h-1 bg-[#ff3333] mr-2"></span>
               Source Vessel
             </div>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-slate-400">
               <span className="w-3 h-1 bg-[#ffb700] mr-2 border-b border-dashed border-white"></span>
               Dark Vessel
             </div>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-slate-400">
               <span className="w-3 h-1 bg-[#00ff88] mr-2"></span>
               Other Vessels
             </div>
@@ -494,7 +497,7 @@ export default function DashboardMap() {
 
       {/* Mini-map */}
       <div className="absolute bottom-6 right-4 z-10 w-40 h-28 bg-gray-900 border border-gray-700 shadow-xl rounded overflow-hidden">
-         <div className="w-full h-full relative" style={{ backgroundImage: 'url(https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/4/7/11)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.8 }}>
+         <div className="w-full h-full relative" style={{ backgroundImage: 'url(https://tile.openstreetmap.org/5/23/14.png)', filter: 'invert(100%) hue-rotate(180deg) contrast(1.2)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.8 }}>
             {/* Viewport indicator for Chennai area */}
             <div className="absolute border border-white bg-white/20" style={{ left: '60%', top: '45%', width: '15%', height: '10%' }}></div>
             <div className="absolute bottom-1 right-2 text-[8px] text-white/70 font-mono tracking-widest">OCEANWATCH AI</div>
