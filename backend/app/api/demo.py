@@ -170,3 +170,25 @@ def get_ennore_demo():
     }
     return response
 
+
+from fastapi.responses import FileResponse
+
+@router.get("/demo/ennore/sar.png")
+def get_sar_png():
+    return FileResponse("artifacts/demo/ennore/sar_preview.png", media_type="image/png")
+
+@router.get("/demo/ennore/slick")
+def get_slick_geojson():
+    return FileResponse("artifacts/demo/ennore/detected_slick.geojson", media_type="application/geo+json")
+
+@router.get("/demo/ennore/drift")
+def get_drift_geojson():
+    return FileResponse("artifacts/demo/ennore/drift_uncertainty.geojson", media_type="application/geo+json")
+
+@router.get("/demo/ennore/drift_heatmap.png")
+def get_drift_heatmap_png():
+    return FileResponse("artifacts/demo/ennore/drift_heatmap.png", media_type="image/png")
+
+@router.get("/demo/ennore/forecast")
+def get_forecast_geojson():
+    return FileResponse("artifacts/demo/ennore/forward_forecast.geojson", media_type="application/geo+json")
