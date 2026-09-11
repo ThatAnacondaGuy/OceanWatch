@@ -72,8 +72,7 @@ export default function DashboardMap() {
     const m = new maplibregl.Map({
       container: mapContainer.current,
       style: SATELLITE_STYLE,
-      center: [80.34, 13.27],
-      zoom: 5.5,
+      // Center/zoom will be set dynamically via fitBounds
       pitch: 0,
       interactive: true,
       attributionControl: false
@@ -81,6 +80,22 @@ export default function DashboardMap() {
 
     mapRef.current = m;
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+
+      // COMPUTE GEOGRAPHIC BOUNDS DYNAMICALLY
+      const bounds = new maplibregl.LngLatBounds();
+      // Slick
+      bounds.extend([data.slick.centroid.lon, data.slick.centroid.lat]);
+      // Drift
+      bounds.extend([data.drift.origin.lon, data.drift.origin.lat]);
+      // Coastal context (West)
+      bounds.extend([80.25, 13.2]);
+      // Offshore context (East)
+      bounds.extend([80.65, 13.2]);
+      // All Vessels
+      data.vessels.forEach((v: any) => bounds.extend([v.position.lon, v.position.lat]));
+      // Apply FitBounds
+      m.fitBounds(bounds, { padding: { top: 80, bottom: 120, left: 200, right: 80 }, duration: 0 });
+
 
     m.on('load', () => {
       
@@ -114,7 +129,7 @@ export default function DashboardMap() {
 
       // Calculate simple bbox for Slick Bracket (Fake bounding box)
       // Ennore Slick is roughly [80.3464, 13.1279] to [80.3507, 13.1367]
-      const minX = 80.344, minY = 13.126, maxX = 80.352, maxY = 13.138;
+      const minX = 80.346, minY = 13.1275, maxX = 80.351, maxY = 13.1375;
       const bracketLen = 0.001;
       const bracketGeojson = {
         type: 'FeatureCollection',
@@ -144,7 +159,7 @@ export default function DashboardMap() {
           <div style="color: #66b2ff; font-size: 10px; margin-top: 3px;">ATTENTION U-NET</div>
         </div>
       `;
-      new maplibregl.Marker({ element: slickEl })
+      new maplibregl.Marker({ element: slickEl, offset: [100, 80] })
         .setLngLat([data.slick.centroid.lon, data.slick.centroid.lat])
         .addTo(m);
 
