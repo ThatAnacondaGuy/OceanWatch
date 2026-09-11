@@ -1,0 +1,7 @@
+{
+  "status": "synthetic_demo",
+  "case_id": "ENNORE-2017-DEMO",
+  "historical_ais_available": false,
+  "purpose": "pipeline_validation_and_ui_demonstration",
+  "warning": "Trajectories are synthetic reconstructions and must not be interpreted as historical forensic AIS evidence."
+}
