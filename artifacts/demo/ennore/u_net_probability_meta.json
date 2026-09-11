@@ -1,0 +1,13 @@
+{
+  "source": "models/best_full_oil_unet.pth",
+  "channel_order": [
+    "VH",
+    "VV",
+    "zeros"
+  ],
+  "threshold_used_downstream": 0.5,
+  "min": 1.7908118934428785e-06,
+  "max": 0.9994687438011169,
+  "mean": 0.0019334484823048115,
+  "std": 0.03314590081572533
+}

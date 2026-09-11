@@ -1,0 +1,26 @@
+# Node
+node_modules/
+dist/
+build/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Ignore massive data directories
+data/
+models/
+qa_output/
+runs/
+*.pt

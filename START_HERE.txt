@@ -1,0 +1,13 @@
+OCEANWATCH AI — QUICK START
+
+1. Open this folder in Google Antigravity.
+2. Make sure all files under docs/ and references/ are visible.
+3. Read docs/README.md.
+4. In Antigravity, paste the full contents of:
+   docs/FIRST_PROMPT_TO_ANTIGRAVITY.md
+5. Let it inspect and plan first.
+6. Review its implementation plan before allowing a huge build.
+7. Keep docs/AGENT_RULES.md as the persistent project rules.
+8. Do not delete the UI reference images.
+9. Add datasets under data/ only after following docs/DATA_SPEC.md.
+10. Do not commit .env secrets.

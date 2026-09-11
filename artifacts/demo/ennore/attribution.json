@@ -1,0 +1,72 @@
+[
+  {
+    "mmsi": "DEMO-MMSI-001",
+    "raw_score": 0.7286994455856233,
+    "breakdown": {
+      "S_spatial": 0.9322795813683429,
+      "S_temporal": 0.8824969025845955,
+      "S_heading": 0.9991266261617691,
+      "S_gap": 1.0,
+      "P_type": 1.0,
+      "S_anomaly": 0.1,
+      "S_dark": 0.0
+    },
+    "probability": 0.4206122190568501
+  },
+  {
+    "mmsi": "DEMO-RADAR-005",
+    "raw_score": 0.38,
+    "breakdown": {
+      "S_spatial": 0.85,
+      "S_temporal": 0.4,
+      "S_heading": 0.0,
+      "S_gap": 0.0,
+      "P_type": 0.0,
+      "S_anomaly": 0.0,
+      "S_dark": 1.0
+    },
+    "probability": 0.21933959770362205
+  },
+  {
+    "mmsi": "DEMO-MMSI-002",
+    "raw_score": 0.24587443990013752,
+    "breakdown": {
+      "S_spatial": 0.14707452966180515,
+      "S_temporal": 0.04393693362340742,
+      "S_heading": 0.9991266261617691,
+      "S_gap": 0.0,
+      "P_type": 0.5,
+      "S_anomaly": 0.1,
+      "S_dark": 0.0
+    },
+    "probability": 0.14192105456131462
+  },
+  {
+    "mmsi": "DEMO-MMSI-003",
+    "raw_score": 0.21733996113398427,
+    "breakdown": {
+      "S_spatial": 0.6851983432424619,
+      "S_temporal": 0.1353352832366127,
+      "S_heading": 0.0,
+      "S_gap": 0.0,
+      "P_type": 0.5,
+      "S_anomaly": 0.1,
+      "S_dark": 0.0
+    },
+    "probability": 0.12545068326328673
+  },
+  {
+    "mmsi": "DEMO-MMSI-004",
+    "raw_score": 0.16055946863392345,
+    "breakdown": {
+      "S_spatial": 0.00017584679965656203,
+      "S_temporal": 0.002187491118182885,
+      "S_heading": 0.9346411707084312,
+      "S_gap": 0.0,
+      "P_type": 0.1,
+      "S_anomaly": 0.1,
+      "S_dark": 0.0
+    },
+    "probability": 0.09267644541492656
+  }
+]

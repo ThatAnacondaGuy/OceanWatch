@@ -1,0 +1,21 @@
+{
+  "slick": {
+    "lat": 13.132393315153301,
+    "lon": 80.34873231132076,
+    "area": 106.0
+  },
+  "drift_origin": {
+    "lat": 13.274952636456051,
+    "lon": 80.41271206103805
+  },
+  "environment": {
+    "wind_speed": 5.385164807134504,
+    "wind_direction": 248.2,
+    "u_wind": -5.0,
+    "v_wind": -2.0,
+    "current_speed": 0.5099019513592785,
+    "current_direction": 191.3,
+    "u_current": -0.1,
+    "v_current": -0.5
+  }
+}
