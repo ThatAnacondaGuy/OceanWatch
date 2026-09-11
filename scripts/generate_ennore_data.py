@@ -136,23 +136,29 @@ def generate_data():
             
     base_t = datetime(2017, 1, 28, 0, 0, 0)
     
-    # Drift origin is roughly 13.278 N, 80.415 E
-    
-    # Vessel 001 (Source) - Passes precisely at origin at 04:00 (with gap at 04:00)
-    add_vessel_track('DEMO-MMSI-001', base_t, 13.340, 80.445, -0.015, -0.0075, 1004, gap_hours=[4])
+    # Drift origin is roughly 13.275 N, 80.412 E. Slick is roughly 13.13 N, 80.35 E.
+    # We want vessels to be strictly offshore, clustered around these coordinates.
+    # Coastline is roughly ~80.30 to 80.35. We stay > 80.38 for safety.
+
+    # Vessel 001 (Source) - Passes precisely through drift origin at 04:00
+    # At 04:00, we want it at 13.275, 80.412.
+    # Moving at -0.01 lat/hr, -0.005 lon/hr.
+    # Start (00:00) = 13.275 + (4*0.01) = 13.315, 80.412 + (4*0.005) = 80.432
+    add_vessel_track('DEMO-MMSI-001', base_t, 13.315, 80.432, -0.01, -0.005, 1004, gap_hours=[4])
 
     # Vessel 002 (Wrong Time + Worse Offset) 
-    # Passes 13.28, 80.35 at 10:00 UTC (10 hours late)
-    # At 00:00: lat = 13.28 - 10*(-0.015) = 13.43. lon = 80.35 - 10*(-0.0075) = 80.425
-    add_vessel_track('DEMO-MMSI-002', base_t, 13.430, 80.425, -0.015, -0.0075, 1003)
+    # At 04:00 it should be further away but still in the envelope.
+    add_vessel_track('DEMO-MMSI-002', base_t, 13.330, 80.450, -0.008, -0.006, 1003)
     
-    # Vessel 003 (Wrong Heading + Worse Offset)
-    # Passes 13.28, 80.48 at 04:00 UTC (far to the east)
-    # At 00:00: lat = 13.28 - 4*(-0.005) = 13.30. lon = 80.48 - 4*(0.015) = 80.42
-    add_vessel_track('DEMO-MMSI-003', base_t, 13.300, 80.420, -0.005, 0.015, 1003)
+    # Vessel 003 (Different direction, crossing path)
+    add_vessel_track('DEMO-MMSI-003', base_t, 13.220, 80.400, 0.01, 0.005, 1003)
 
-    # Vessel 004 (Wrong Space/Location)
-    add_vessel_track('DEMO-MMSI-004', base_t, 13.490, 80.590, -0.01, -0.01, 1010)
+    # Vessel 004 (Just outside the immediate drift envelope, but still close)
+    add_vessel_track('DEMO-MMSI-004', base_t, 13.250, 80.470, -0.012, -0.002, 1010)
+
+    # Dark Vessel DEMO-RADAR-005
+    # (Note: Dark vessels usually don't have AIS tracks, but we generate it for the radar pipeline if needed)
+    add_vessel_track('DEMO-RADAR-005', base_t, 13.290, 80.420, -0.009, -0.004, 0)
     
     df = pd.DataFrame(records)
     df.to_csv(f"{base_dir}/ais/ais_tracks.csv", index=False)
