@@ -25,6 +25,11 @@ interface AppContextType {
     driftHeatmap: boolean;
     driftForecast: boolean;
     vessels: boolean;
+    vesselSelectedTrack: boolean;
+    vesselOtherTracks: boolean;
+    vesselHistoricalTrail: boolean;
+    vesselCurrentPosition: boolean;
+    vesselOriginPoint: boolean;
   };
   setLayers: (layers: any) => void;
   
@@ -53,37 +58,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
     driftOrigin: true,
     driftHeatmap: true,
     driftForecast: false,
-    vessels: true
+    vessels: true,
+    vesselSelectedTrack: true,
+    vesselOtherTracks: true,
+    vesselHistoricalTrail: true,
+    vesselCurrentPosition: true,
+    vesselOriginPoint: true,
   });
 
   useEffect(() => {
     fetch('/api/demo/ennore')
       .then(res => res.json())
       .then(d => {
-         setData(d);
-         // Set initial playback time to earliest AIS time
-         if (d.ais?.playback_asset) {
-            fetch(d.ais.playback_asset)
-              .then(res => res.json())
-              .then(pb => {
-                 setPlaybackData(pb);
-                 // find min time
-                 let minTime = Infinity;
-                 Object.values(pb).forEach((arr: any) => {
-                    if (arr.length > 0 && arr[0].time < minTime) minTime = arr[0].time;
-                 });
-                 if (minTime !== Infinity) {
-                    setPlaybackTime(minTime);
-                 }
-                 setLoading(false);
-              })
-              .catch(err => {
-                 console.error("Playback fetch error:", err);
-                 setLoading(false);
+        setData(d);
+        if (d.vessels && d.vessels.length > 0) {
+          setSelectedVessel(d.vessels[0].id);
+        }
+        
+        // Fetch playback data separately
+        if (d.ais?.playback_asset) {
+          fetch(d.ais.playback_asset)
+            .then(async (res) => {
+              if (res.status === 404) throw new Error("FILE_NOT_FOUND");
+              if (!res.ok) throw new Error(`HTTP_ERROR (${res.status})`);
+              
+              const contentType = res.headers.get("content-type");
+              if (!contentType || !contentType.includes("application/json")) {
+                const text = await res.text();
+                console.error("Expected AIS JSON but received non-JSON response:", text.substring(0, 100));
+                throw new Error("INVALID_JSON (Received HTML/Fallback)");
+              }
+              return res.json();
+            })
+            .then(pb => {
+              if (!pb || Object.keys(pb).length === 0) {
+                throw new Error("EMPTY_DATA");
+              }
+              // Basic schema check
+              const firstKey = Object.keys(pb)[0];
+              if (!Array.isArray(pb[firstKey])) {
+                throw new Error("INVALID_SCHEMA");
+              }
+
+              setPlaybackData(pb);
+              let minTimeSec = Infinity;
+              Object.values(pb).forEach((arr: any) => {
+                if (arr.length > 0 && (arr[0].time * 1000) < minTimeSec) {
+                  minTimeSec = arr[0].time * 1000;
+                }
               });
-         } else {
-            setLoading(false);
-         }
+              if (minTimeSec !== Infinity) {
+                setPlaybackTime(minTimeSec);
+              }
+              setError(null);
+              setLoading(false);
+            })
+            .catch(err => {
+              console.error("Playback fetch error:", err);
+              setError(err.message);
+              setLoading(false);
+            });
+        } else {
+          setError("FILE_NOT_FOUND (No playback_asset in config)");
+          setLoading(false);
+        }
       })
       .catch(err => {
         setError(err.message);

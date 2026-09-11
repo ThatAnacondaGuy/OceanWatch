@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { CheckCircle, FileText, Wind, Compass, Waves } from 'lucide-react';
+import { CheckCircle, Wind, Compass, Waves, CheckCircle2, BarChart, FileSearch, PieChart, Users } from 'lucide-react';
 import clsx from 'clsx';
 
 const FACTORS = ['spatial', 'temporal', 'heading', 'gap', 'type', 'anomaly', 'dark'] as const;
@@ -11,28 +11,26 @@ export default function AnalyticsScreen() {
   const selectedResult = data.attribution.results.find(r => r.id === selectedVessel);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-auto p-5 gap-5">
-      <div className="shrink-0 flex justify-between items-end">
-        <div>
-          <div className="flex items-center gap-2 text-[10px] text-blue-600 font-bold tracking-widest uppercase mb-1">
-            <span>Dashboard</span> <span className="opacity-50">/</span> <span>Analytics &amp; Reports</span>
+    <div className="flex flex-col h-full p-4 gap-4 overflow-y-auto">
+       {/* Top Metrics Row */}
+       <div className="flex gap-4 shrink-0 overflow-x-auto pb-1">
+          <StatCard icon={<BarChart className="w-5 h-5" />} label="Reports Generated" value="1,248" trend="+15" trendColor="text-emerald-500" bg="bg-blue-50" fg="text-blue-500" />
+          <StatCard icon={<FileSearch className="w-5 h-5" />} label="Avg Confidence" value="84.2%" trend="+2.1%" trendColor="text-emerald-500" bg="bg-indigo-50" fg="text-indigo-500" />
+          <StatCard icon={<PieChart className="w-5 h-5" />} label="False Positives" value="3.1%" trend="-0.4%" trendColor="text-emerald-500" bg="bg-amber-50" fg="text-amber-500" />
+          <StatCard icon={<Users className="w-5 h-5" />} label="Active Agencies" value="12" subtext="Global" bg="bg-emerald-50" fg="text-emerald-500" />
+          <div className="flex-1 bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex items-center justify-between min-w-[200px]">
+             <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">System Status</span>
+                <span className="text-sm font-black text-navy-900 mt-0.5">Operational</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">All systems nominal</span>
+             </div>
+             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-6 h-6" />
+             </div>
           </div>
-          <h1 className="text-xl font-black text-navy-900 tracking-tight">Single-Case Demonstration Analytics</h1>
-          <p className="text-xs text-slate-500 mt-1">Forensic evidence breakdown for the synthetic demo investigation.</p>
-        </div>
-        <div className="flex gap-3 items-center">
-          <div className="flex items-center gap-2 border border-slate-200 bg-white rounded px-3 py-1.5 text-xs">
-            <span className="text-slate-500 font-bold">Timeframe:</span>
-            <span className="font-bold text-navy-900">Current Demo Run</span>
-          </div>
-          <button onClick={() => window.open('/api/demo/ennore', '_blank')}
-            className="bg-navy-900 hover:bg-navy-800 text-white text-[10px] font-bold px-3 py-2 rounded shadow flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Export JSON
-          </button>
-        </div>
-      </div>
+       </div>
 
-      <div className="grid grid-cols-[1.5fr,2fr] gap-5">
+      <div className="grid grid-cols-[1.5fr,2fr] gap-5 min-h-[400px]">
         {/* Column 1 */}
         <div className="flex flex-col gap-5">
           {/* Detection Summary */}
@@ -194,6 +192,24 @@ function Kv({ k, v, highlight }: { k: string; v: string; highlight?: boolean }) 
     <div className="flex justify-between">
       <span className="text-slate-500">{k}</span>
       <span className={clsx("font-bold", highlight ? "text-red-600" : "text-navy-900")}>{v}</span>
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value, subtext, bg, fg, trend, trendColor, badge, badgeColor }: any) {
+  const bc = badgeColor === 'red' ? 'bg-red-50 text-red-500' : badgeColor === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500';
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex flex-col justify-between min-w-[160px] flex-1">
+      <div className="flex items-center justify-between mb-2">
+         <div className={`w-8 h-8 rounded ${bg} ${fg} flex items-center justify-center shrink-0`}>{icon}</div>
+         {badge && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bc}`}>{badge}</span>}
+      </div>
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">{label}</p>
+      <div className="flex items-baseline gap-2 mt-1">
+         <p className="text-2xl font-black text-navy-900 leading-none">{value}</p>
+         {trend && <span className={`text-[11px] font-bold ${trendColor}`}>{trend}</span>}
+      </div>
+      <p className="text-[10px] text-slate-400 mt-1 truncate">{subtext}</p>
     </div>
   );
 }

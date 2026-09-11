@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useApp } from '../../context/AppContext';
+import { getVesselStateAtTime } from '../../utils/ais';
 
 const DARK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -263,30 +264,57 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
 
       // ── 7. Dynamic Tracks Source & Layer ────────────────────────────
       m.addSource('dynamic-tracks-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      m.addSource('dynamic-tracks-future-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       
-      // Neutral tracks
+      // Neutral tracks (past)
       m.addLayer({
         id: 'tracks-neutral',
         type: 'line',
         source: 'dynamic-tracks-src',
-        paint: { 'line-color': '#94a3b8', 'line-width': 1.5, 'line-opacity': 0.7 },
+        paint: { 
+          'line-color': ['case', ['==', ['get', 'isSelected'], true], '#3b82f6', '#94a3b8'], 
+          'line-width': ['case', ['==', ['get', 'isSelected'], true], 3.5, 1.5], 
+          'line-opacity': ['case', ['==', ['get', 'isSelected'], true], 1.0, 0.4] 
+        },
         filter: ['==', ['get', 'type'], 'neutral'],
       });
-      // Dark tracks
+      // Dark tracks (past)
       m.addLayer({
         id: 'tracks-dark',
         type: 'line',
         source: 'dynamic-tracks-src',
-        paint: { 'line-color': '#f59e0b', 'line-width': 2, 'line-dasharray': [4, 4] },
+        paint: { 
+          'line-color': '#f59e0b', 
+          'line-width': ['case', ['==', ['get', 'isSelected'], true], 3.5, 2], 
+          'line-dasharray': [4, 4],
+          'line-opacity': ['case', ['==', ['get', 'isSelected'], true], 1.0, 0.5]
+        },
         filter: ['==', ['get', 'type'], 'dark'],
       });
-      // Source track
+      // Source track (past)
       m.addLayer({
         id: 'tracks-source',
         type: 'line',
         source: 'dynamic-tracks-src',
-        paint: { 'line-color': '#ef4444', 'line-width': 3, 'line-opacity': 0.95 },
+        paint: { 
+          'line-color': '#ef4444', 
+          'line-width': ['case', ['==', ['get', 'isSelected'], true], 4, 2.5], 
+          'line-opacity': ['case', ['==', ['get', 'isSelected'], true], 1.0, 0.6] 
+        },
         filter: ['==', ['get', 'type'], 'source'],
+      });
+
+      // Future tracks (all types - faint and dashed)
+      m.addLayer({
+        id: 'tracks-future',
+        type: 'line',
+        source: 'dynamic-tracks-future-src',
+        paint: { 
+          'line-color': ['case', ['==', ['get', 'isSelected'], true], '#94a3b8', '#cbd5e1'], 
+          'line-width': 1.5,
+          'line-dasharray': [2, 4],
+          'line-opacity': 0.3 
+        }
       });
 
       // ── 8. Source-Slick Relationship Connector ──────────────────────
@@ -424,14 +452,10 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
     vis('tracks-neutral', layers.vessels);
     vis('tracks-source', layers.vessels);
     vis('tracks-dark', layers.vessels);
+    vis('tracks-future', layers.vessels);
     vis('relationship-line', layers.vessels);
 
-    data?.vessels.forEach((v) => {
-      if (markersRef.current[v.id]) {
-        markersRef.current[v.id].getElement().style.display = layers.vessels ? 'flex' : 'none';
-      }
-    });
-  }, [layers, data?.vessels]);
+  }, [layers]);
 
   // ── Playback & Selection Sync (Dynamic Tracks) ──────────────────────
   useEffect(() => {
@@ -439,43 +463,51 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
     if (!m || !m.isStyleLoaded() || !playbackData || !data) return;
 
     const currentVesselPositions: Record<string, {lat: number, lon: number}> = {};
-    const features: any[] = [];
+    const pastFeatures: any[] = [];
+    const futureFeatures: any[] = [];
     const timeLimit = playbackTime ?? Infinity;
 
-    data?.vessels.forEach((v) => {
-      const isSource = v.id === data?.attribution?.results[0]?.id;
+    data.vessels.forEach((v) => {
+      const isSource = v.id === data.attribution.results[0]?.id;
       const isDark = v.vessel_type === 'Unknown / Dark Vessel';
+      const isSelected = v.id === selectedVessel;
       const type = isSource ? 'source' : isDark ? 'dark' : 'neutral';
 
-      const pts = playbackData[v.id];
-      if (!pts || pts.length === 0) return;
-
-      let closest = pts[0];
-      const validCoords: number[][] = [];
-      
-      for (const pt of pts) {
-        if (pt.time <= timeLimit) {
-          closest = pt;
-          validCoords.push([pt.lon, pt.lat]);
-        } else {
-          break;
-        }
+      const state = getVesselStateAtTime(v.id, timeLimit, playbackData, data.vessels, data.attribution);
+      if (!state || !state.hasValidTelemetry) {
+        if (markersRef.current[v.id]) markersRef.current[v.id].getElement().style.display = 'none';
+        return;
       }
+
+      currentVesselPositions[v.id] = { lat: state.lat, lon: state.lon };
+
+      const pastCoords = state.pastPts.map((p: any) => [p.lon, p.lat]);
+      const futureCoords = state.futurePts.map((p: any) => [p.lon, p.lat]);
       
-      currentVesselPositions[v.id] = { lat: closest.lat, lon: closest.lon };
+      // Connect future track to the last past point
+      if (pastCoords.length > 0 && futureCoords.length > 0) {
+        futureCoords.unshift(pastCoords[pastCoords.length - 1]);
+      }
 
       // Update marker position & rotation
       const marker = markersRef.current[v.id];
       if (marker) {
-        marker.setLngLat([closest.lon, closest.lat]);
+        marker.setLngLat([state.lon, state.lat]);
         const el = marker.getElement();
+        el.style.display = layers.vesselCurrentPosition ? 'flex' : 'none';
         const iconEl = el.querySelector('.vessel-icon') as HTMLElement;
-        if (iconEl) iconEl.style.transform = `rotate(${closest.heading}deg)`;
+        if (iconEl) {
+          iconEl.style.transform = `rotate(${state.heading}deg)`;
+          // Enlarge selected marker slightly
+          if (isSelected) {
+            iconEl.style.transform += ' scale(1.3)';
+          }
+        }
         
         // Highlight logic
         const labelEl = el.querySelector('.vessel-label') as HTMLElement;
         if (labelEl) {
-          if (v.id === selectedVessel) {
+          if (isSelected) {
             labelEl.style.opacity = '1';
             labelEl.style.background = '#3b82f6';
             labelEl.style.borderColor = '#60a5fa';
@@ -489,27 +521,38 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
         }
       }
 
-      // Add Track LineString
-      if (validCoords.length > 1) {
-        features.push({
-          type: 'Feature',
-          properties: { mmsi: v.id, type: type },
-          geometry: { type: 'LineString', coordinates: validCoords }
-        });
+      // Add Track LineStrings
+      if (pastCoords.length > 1) {
+        if ((isSelected && layers.vesselSelectedTrack) || (!isSelected && layers.vesselOtherTracks)) {
+          pastFeatures.push({
+            type: 'Feature',
+            properties: { mmsi: v.id, type, isSelected },
+            geometry: { type: 'LineString', coordinates: pastCoords }
+          });
+        }
+      }
+      if (futureCoords.length > 1 && layers.vesselHistoricalTrail) {
+        if ((isSelected && layers.vesselSelectedTrack) || (!isSelected && layers.vesselOtherTracks)) {
+          futureFeatures.push({
+            type: 'Feature',
+            properties: { mmsi: v.id, type, isSelected },
+            geometry: { type: 'LineString', coordinates: futureCoords }
+          });
+        }
       }
     });
 
     // Update dynamic tracks source
-    const tracksSrc = m.getSource('dynamic-tracks-src') as maplibregl.GeoJSONSource;
-    if (tracksSrc) {
-      tracksSrc.setData({ type: 'FeatureCollection', features });
-    }
+    const pastSrc = m.getSource('dynamic-tracks-src') as maplibregl.GeoJSONSource;
+    if (pastSrc) pastSrc.setData({ type: 'FeatureCollection', features: pastFeatures });
 
-    // Update Source Relationship Line
+    const futureSrc = m.getSource('dynamic-tracks-future-src') as maplibregl.GeoJSONSource;
+    if (futureSrc) futureSrc.setData({ type: 'FeatureCollection', features: futureFeatures });
+
+    // Update Source Relationship Line (from current pos to origin)
     const relSrc = m.getSource('relationship-src') as maplibregl.GeoJSONSource;
     if (relSrc) {
-      const srcId = data?.attribution?.results[0]?.id;
-      if (selectedVessel === srcId && currentVesselPositions[srcId]) {
+      if (selectedVessel && currentVesselPositions[selectedVessel]) {
         relSrc.setData({
           type: 'FeatureCollection',
           features: [{
@@ -518,7 +561,7 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
             geometry: {
               type: 'LineString',
               coordinates: [
-                [currentVesselPositions[srcId].lon, currentVesselPositions[srcId].lat],
+                [currentVesselPositions[selectedVessel].lon, currentVesselPositions[selectedVessel].lat],
                 [data?.drift?.origin?.lon, data?.drift?.origin?.lat]
               ]
             }
@@ -529,7 +572,32 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
       }
     }
 
-  }, [playbackTime, playbackData, data?.vessels, selectedVessel]);
+    // Update Earliest Available Point Marker
+    if (layers.vesselOriginPoint && selectedVessel && playbackData[selectedVessel] && playbackData[selectedVessel].length > 0) {
+      const earliest = playbackData[selectedVessel][0];
+      if (!markersRef.current['__earliest_point__']) {
+        const earliestEl = document.createElement('div');
+        earliestEl.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:40;';
+        earliestEl.innerHTML = `
+          <div style="width:10px;height:10px;background:#3b82f6;border:2px solid white;border-radius:50%;box-shadow:0 0 8px rgba(59,130,246,0.8);"></div>
+          <div style="position:absolute;top:14px;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);border:1px solid #3b82f6;padding:2px 4px;border-radius:3px;color:white;font-family:system-ui;font-size:8px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+            ORIGIN / EARLIEST AVAILABLE AIS
+          </div>
+        `;
+        markersRef.current['__earliest_point__'] = new maplibregl.Marker({ element: earliestEl, anchor: 'center' })
+          .setLngLat([earliest.lon, earliest.lat])
+          .addTo(m);
+      } else {
+        markersRef.current['__earliest_point__'].setLngLat([earliest.lon, earliest.lat]);
+        markersRef.current['__earliest_point__'].getElement().style.display = 'flex';
+      }
+    } else {
+      if (markersRef.current['__earliest_point__']) {
+        markersRef.current['__earliest_point__'].getElement().style.display = 'none';
+      }
+    }
+
+  }, [playbackTime, playbackData, data?.vessels, selectedVessel, layers]);
 
   // Handle Fly-To on Select
   useEffect(() => {
@@ -573,7 +641,13 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
             <LayerRow label="Backward Heatmap" checked={layers.driftHeatmap} onChange={(v) => setLayers({ ...layers, driftHeatmap: v })} color="#fb923c" />
             <LayerRow label="Drift Origin & Envelope" checked={layers.driftOrigin} onChange={(v) => setLayers({ ...layers, driftOrigin: v })} color="#06b6d4" />
             <LayerRow label="Forward Forecast" checked={layers.driftForecast} onChange={(v) => setLayers({ ...layers, driftForecast: v })} color="#a855f7" />
-            <LayerRow label="Vessels & Tracks" checked={layers.vessels} onChange={(v) => setLayers({ ...layers, vessels: v })} />
+            
+            <div className="mt-3 mb-1 font-bold text-slate-800 border-b border-slate-200 pb-1">Vessel Tracking</div>
+            <LayerRow label="Selected Vessel Track" checked={layers.vesselSelectedTrack} onChange={(v) => setLayers({ ...layers, vesselSelectedTrack: v })} color="#3b82f6" />
+            <LayerRow label="Other Vessel Tracks" checked={layers.vesselOtherTracks} onChange={(v) => setLayers({ ...layers, vesselOtherTracks: v })} />
+            <LayerRow label="Future Track (Dashed)" checked={layers.vesselHistoricalTrail} onChange={(v) => setLayers({ ...layers, vesselHistoricalTrail: v })} />
+            <LayerRow label="Current Position (Ships)" checked={layers.vesselCurrentPosition} onChange={(v) => setLayers({ ...layers, vesselCurrentPosition: v })} />
+            <LayerRow label="Origin Point (Earliest)" checked={layers.vesselOriginPoint} onChange={(v) => setLayers({ ...layers, vesselOriginPoint: v })} />
 
             <div className="pt-2 border-t border-slate-200 mt-2">
               <button onClick={fitCase}

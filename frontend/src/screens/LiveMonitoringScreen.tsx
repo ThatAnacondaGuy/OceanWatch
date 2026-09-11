@@ -1,217 +1,271 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Ship, Droplet, UserX, Wind, CheckCircle, PlayCircle, Pause, AlertTriangle } from 'lucide-react';
+import { Satellite, Navigation, Droplet, Wind, CheckCircle2, PlayCircle, Pause, AlertTriangle, Activity, Compass, Calendar, EyeOff, Search, ChevronDown } from 'lucide-react';
 import MapLibreMap from '../components/map/MapLibreMap';
 
 export default function LiveMonitoringScreen() {
-  const {
-    data, selectedVessel, setSelectedVessel,
-    playbackTime, setPlaybackTime,
-    isPlaying, setIsPlaying,
-    layers, setLayers, playbackData,
-  } = useApp();
+  const { data, isPlaying, setIsPlaying, playbackTime, setPlaybackTime, playbackData, selectedVessel, setSelectedVessel } = useApp();
+  const [activeTab, setActiveTab] = useState('Live Map');
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Compute time range from playback data
   const timeRange = useMemo(() => {
-    if (!playbackData) return { min: 0, max: 1 };
+    if (!playbackData || Object.keys(playbackData).length === 0) return { min: 0, max: 100 };
     let min = Infinity;
     let max = -Infinity;
-    Object.values(playbackData).forEach((arr: any) => {
-      if (arr.length > 0) {
-        if (arr[0].time < min) min = arr[0].time;
-        if (arr[arr.length - 1].time > max) max = arr[arr.length - 1].time;
-      }
+    Object.values(playbackData).forEach((pts: any) => {
+      pts.forEach((p: any) => {
+        if (p.time < min) min = p.time;
+        if (p.time > max) max = p.time;
+      });
     });
-    return { min: min === Infinity ? 0 : min, max: max === -Infinity ? 1 : max };
+    return { min: min === Infinity ? 0 : min, max: max === -Infinity ? 100 : max };
   }, [playbackData]);
-
-  // Playback timer
-  useEffect(() => {
-    if (isPlaying && playbackData) {
-      intervalRef.current = setInterval(() => {
-        setPlaybackTime((prev) => {
-          const next = (prev ?? timeRange.min) + 900; // +15 min
-          if (next > timeRange.max) return timeRange.min; // loop
-          return next;
-        });
-      }, 800);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isPlaying, playbackData, timeRange]);
 
   if (!data) return null;
 
-  const darkVessels = data.vessels.filter(v => v.vessel_type === 'Unknown / Dark Vessel').length;
-  const currentTimeStr = playbackTime
+  const currentTimeStr = playbackTime 
     ? new Date(playbackTime * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
-    : data.case.date + ' 04:00 UTC';
+    : 'Waiting for AIS data...';
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-      {/* Top Stats */}
-      <div className="grid grid-cols-6 gap-3 p-4 shrink-0">
-        <StatCard icon={<Ship className="w-5 h-5 fill-current" />} label="Monitored Vessels" value={String(data.vessels.length)} sub="(Demo)" bg="bg-blue-50" fg="text-blue-600" />
-        <StatCard icon={<Droplet className="w-5 h-5 fill-current" />} label="Detected Slicks" value="1" sub="Ennore" bg="bg-red-50" fg="text-red-500" />
-        <StatCard icon={<UserX className="w-5 h-5 fill-current" />} label="Dark Vessels" value={String(darkVessels)} sub="(Radar only)" bg="bg-slate-100" fg="text-slate-600" />
-        <StatCard icon={<Wind className="w-5 h-5" />} label="Wind Speed" value={`${data.environment.wind_speed.toFixed(1)} m/s`} sub="Synthetic" bg="bg-sky-50" fg="text-sky-500" />
-        <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Attribution Score" value={`${(data.attribution.results[0].attribution_score * 100).toFixed(0)}%`} sub={data.attribution.results[0].id.replace('DEMO-','')} bg="bg-amber-50" fg="text-amber-500" />
-        <StatCard icon={<CheckCircle className="w-5 h-5" />} label="System Status" value="Operational" sub="Demo Playback" bg="bg-emerald-50" fg="text-emerald-500" />
+    <div className="flex flex-col h-full p-4 gap-4 overflow-y-auto">
+      {/* Top Metrics Row */}
+      <div className="flex gap-4 shrink-0 overflow-x-auto pb-1">
+        <StatCard icon={<Satellite className="w-5 h-5" />} label="Satellites Active" value="2 / 3" subtext="Sentinel-1, Sentinel-2" bg="bg-blue-50" fg="text-blue-500" />
+        <StatCard icon={<Navigation className="w-5 h-5" />} label="Monitored Vessels" value="5" trend="+1" trendColor="text-emerald-500" subtext="(In View)" bg="bg-blue-50" fg="text-blue-500" />
+        <StatCard icon={<Droplet className="w-5 h-5" />} label="Detected Oil Spills" value="1" badge="Active" badgeColor="red" subtext="Last 24 hours" bg="bg-red-50" fg="text-red-500" />
+        <StatCard icon={<EyeOff className="w-5 h-5" />} label="Dark Vessels" value="1" badge="Radar" badgeColor="amber" subtext="(Radar only)" bg="bg-amber-50" fg="text-amber-600" />
+        <StatCard icon={<Wind className="w-5 h-5" />} label="Avg. Wind Speed" value={`${data.environment.wind_speed.toFixed(1)} m/s`} subtext="(Demo Area)" bg="bg-slate-50" fg="text-blue-400" />
+        <div className="flex-1 bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex items-center justify-between min-w-[200px]">
+           <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">System Status</span>
+              <span className="text-sm font-black text-navy-900 mt-0.5">Operational</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">All systems nominal</span>
+           </div>
+           <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-6 h-6" />
+           </div>
+        </div>
       </div>
 
-      {/* Main Area: Map + Sidebar */}
-      <div className="flex-1 flex px-4 pb-4 gap-4 min-h-0">
-        {/* Map Area */}
-        <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-          {/* Map Toolbar */}
-          <div className="h-10 border-b border-slate-100 flex items-center justify-between px-3 bg-slate-50 shrink-0">
-            <div className="flex text-[10px] font-bold gap-1">
-              <button onClick={() => { setLayers({ ...layers, sar: true, slick: true, vessels: true, driftHeatmap: false, driftForecast: false }); }}
-                className="px-3 py-1 bg-blue-100 text-blue-800 rounded">Investigation Map</button>
-              <button onClick={() => { setLayers({ ...layers, driftHeatmap: true, driftForecast: true, driftOrigin: true }); }}
-                className="px-3 py-1 text-slate-500 hover:text-navy-900 hover:bg-slate-100 rounded">+ Drift</button>
-              <button onClick={() => { setLayers({ ...layers, driftForecast: true }); }}
-                className="px-3 py-1 text-slate-500 hover:text-navy-900 hover:bg-slate-100 rounded">+ Forecast</button>
-            </div>
-            <div className="px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] text-amber-700 font-bold uppercase tracking-widest">
-              Demonstration Playback
-            </div>
+      <div className="flex gap-4 flex-1 min-h-0">
+        {/* Left Column (Main Map + Env) */}
+        <div className="flex-[2] flex flex-col gap-4 min-w-0">
+          
+          <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col min-h-[400px] overflow-hidden">
+             <div className="flex items-center justify-between px-2 pt-2 border-b border-slate-100 bg-white z-10 shrink-0">
+                <div className="flex gap-1">
+                   {['Live Map', 'Drift Forecast', 'Vessel Tracks', 'Satellite Coverage'].map(tab => (
+                     <button key={tab} onClick={() => setActiveTab(tab)}
+                       className={`px-4 py-2.5 text-xs font-bold transition-colors border-b-2 ${activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-navy-900 hover:bg-slate-50 rounded-t'}`}>
+                       {tab}
+                     </button>
+                   ))}
+                </div>
+                <div className="flex items-center gap-2 pb-1 pr-2">
+                   <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                      <input type="text" placeholder="Search vessel..." className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded w-48 focus:outline-none focus:border-blue-400 text-navy-900" />
+                   </div>
+                   <button className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded text-xs font-bold shadow-sm">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      Real-time (Live) <ChevronDown className="w-3.5 h-3.5"/>
+                   </button>
+                </div>
+             </div>
+             
+             {/* Map Area */}
+             <div className="flex-1 relative bg-slate-100">
+               <div className="absolute inset-0">
+                  <MapLibreMap showLayerPanel />
+               </div>
+             </div>
+             
+             {/* Timeline Playback inside Map container */}
+             <div className="bg-white border-t border-slate-200 px-4 py-3 shrink-0 flex items-center gap-4">
+                <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-md transition-colors">
+                  {isPlaying ? <Pause className="w-4 h-4" /> : <PlayCircle className="w-5 h-5" />}
+                </button>
+                
+                <span className="text-xs font-mono font-bold text-navy-900 whitespace-nowrap w-[150px]">
+                  {currentTimeStr}
+                </span>
+                
+                <div className="flex-1 relative mx-4">
+                  <input
+                    type="range"
+                    min={timeRange.min}
+                    max={timeRange.max}
+                    step={900}
+                    value={playbackTime ?? timeRange.min}
+                    onChange={(e) => setPlaybackTime(+e.target.value)}
+                    className="w-full h-1.5 bg-slate-200 rounded-full appearance-none accent-blue-600 cursor-pointer"
+                  />
+                  <div className="absolute top-4 left-0 right-0 flex justify-between text-[9px] font-bold text-slate-400 px-1">
+                    <span>{new Date(timeRange.min * 1000).toISOString().slice(11, 16)} Z</span>
+                    <span>{new Date(timeRange.max * 1000).toISOString().slice(11, 16)} Z</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                   <button className="px-3 py-1.5 bg-navy-900 text-white text-[10px] font-bold rounded shadow-sm">Live</button>
+                   <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded hover:bg-slate-50 flex items-center gap-1"><Calendar className="w-3 h-3" /> Historical</button>
+                </div>
+             </div>
           </div>
-
-          {/* Map */}
-          <div className="flex-1 relative"><MapLibreMap showLayerPanel /></div>
-
-          {/* Timeline */}
-          <div className="h-14 border-t border-slate-200 bg-white flex items-center px-4 gap-3 shrink-0">
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shrink-0 shadow transition-colors"
-            >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <PlayCircle className="w-5 h-5" />}
-            </button>
-
-            <span className="text-[10px] font-mono font-bold text-navy-900 whitespace-nowrap min-w-[160px]">
-              {currentTimeStr}
-            </span>
-
-            <div className="flex-1 relative">
-              <input
-                type="range"
-                min={timeRange.min}
-                max={timeRange.max}
-                step={900}
-                value={playbackTime ?? timeRange.min}
-                onChange={(e) => setPlaybackTime(+e.target.value)}
-                className="w-full h-2 bg-slate-200 rounded-full appearance-none accent-blue-600 cursor-pointer"
-              />
-              <div className="absolute top-3 left-0 right-0 flex justify-between text-[8px] text-slate-400 font-mono px-0.5">
-                <span>{new Date(timeRange.min * 1000).toISOString().slice(11, 16)}</span>
-                <span>{new Date(timeRange.max * 1000).toISOString().slice(11, 16)}</span>
-              </div>
-            </div>
-
-            <div className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[9px] text-slate-500 font-bold uppercase tracking-wider whitespace-nowrap">
-              Demo Playback
-            </div>
+          
+          {/* Bottom Left Panels: Environmental Conditions & Forecast */}
+          <div className="flex gap-4 shrink-0 h-28">
+             <div className="flex-[2] bg-white rounded-lg border border-slate-200 shadow-sm p-3 flex flex-col">
+                <h3 className="text-[11px] font-bold text-navy-900 mb-2">Environmental Conditions <span className="text-slate-400 font-normal">(at cursor)</span></h3>
+                <div className="flex items-center justify-between flex-1 px-4">
+                   <EnvMetric icon={<Wind className="w-6 h-6 text-blue-400" />} label="Wind Speed" val={`${data.environment.wind_speed.toFixed(1)} m/s`} sub="(NE)" />
+                   <div className="w-px h-8 bg-slate-200" />
+                   <EnvMetric icon={<Activity className="w-6 h-6 text-emerald-400" />} label="Wave Height" val="1.4 m" sub="(Demo)" />
+                   <div className="w-px h-8 bg-slate-200" />
+                   <EnvMetric icon={<Compass className="w-6 h-6 text-indigo-400" />} label="Surface Current" val={`${data.environment.current_speed.toFixed(2)} m/s`} sub="(E)" />
+                   <div className="w-px h-8 bg-slate-200" />
+                   <EnvMetric icon={<Droplet className="w-6 h-6 text-amber-400" />} label="Sea Surface Temp." val="28.3 °C" sub=" " />
+                </div>
+             </div>
+             
+             <div className="flex-[1] bg-white rounded-lg border border-slate-200 shadow-sm p-3 flex flex-col">
+                <h3 className="text-[11px] font-bold text-navy-900 mb-2">Forecast <span className="text-slate-400 font-normal">(Selected Spill)</span></h3>
+                <div className="flex items-center gap-4 mt-2">
+                   <Wind className="w-8 h-8 text-red-500" />
+                   <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Estimated Reach (72h)</span>
+                      <span className="text-sm font-black text-navy-900">~ 85 km</span>
+                      <span className="text-[10px] text-slate-400">(towards SE)</span>
+                   </div>
+                   <div className="ml-auto flex items-center gap-2 pr-2">
+                      <AlertTriangle className="w-6 h-6 text-red-500" />
+                      <div className="flex flex-col">
+                         <span className="text-[10px] font-bold text-navy-900">Potential Impact</span>
+                         <span className="text-[10px] font-bold text-red-500">Coastline Risk</span>
+                      </div>
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-[300px] flex flex-col gap-3 shrink-0 overflow-y-auto">
+        {/* Right Column */}
+        <div className="w-[320px] flex flex-col gap-4 shrink-0 overflow-y-auto">
+          
           {/* Active Detections */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm shrink-0">
-            <div className="p-2.5 border-b border-slate-100 bg-slate-50 text-xs font-bold text-navy-900">Active Detections (1)</div>
-            <div className="p-2.5">
-              <div className="flex items-start gap-2 p-2 bg-red-50/50 rounded border border-red-100">
-                <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-bold text-navy-900 truncate">{data.case.case_id}</div>
-                  <div className="text-[9px] text-slate-500">{data.case.location}</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">{data.slick.area} px</div>
-                </div>
-              </div>
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col shrink-0">
+            <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+              <h3 className="font-bold text-navy-900 text-sm">Active Detections (3)</h3>
+              <button className="text-[10px] font-bold text-blue-600 hover:underline">View All</button>
+            </div>
+            <div className="p-1 flex flex-col">
+               <DetectionRow id={data.case.case_id} area={`${data.slick.area} px`} time={data.case.date} status="High" color="bg-red-500" statusColor="text-red-600 bg-red-50" />
+               <DetectionRow id="OS-2025-090" area="3.1 km²" time="08 Sep 2025, 16:03 Z" status="Medium" color="bg-amber-500" statusColor="text-amber-600 bg-amber-50" />
+               <DetectionRow id="OS-2025-089" area="0.8 km²" time="07 Sep 2025, 09:12 Z" status="Low" color="bg-emerald-500" statusColor="text-emerald-600 bg-emerald-50" />
             </div>
           </div>
 
           {/* Vessels in View */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex-1 flex flex-col min-h-0">
-            <div className="p-2.5 border-b border-slate-100 bg-slate-50 text-xs font-bold text-navy-900">
-              Vessels in View ({data.vessels.length})
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col flex-1 min-h-[250px]">
+            <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+              <h3 className="font-bold text-navy-900 text-sm">Vessels in View ({data.vessels.length})</h3>
+              <button className="text-[10px] font-bold text-blue-600 hover:underline">View All</button>
             </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+            <div className="flex-1 overflow-y-auto p-1">
               {data.attribution.results.map((c) => {
                 const v = data.vessels.find(x => x.id === c.id);
                 const isDark = v?.vessel_type === 'Unknown / Dark Vessel';
                 const isSource = c.rank === 1;
                 return (
-                  <div
-                    key={c.id}
-                    onClick={() => setSelectedVessel(c.id)}
-                    className={`flex items-center gap-2 p-2.5 cursor-pointer hover:bg-slate-50 transition-colors text-[10px] ${selectedVessel === c.id ? 'bg-blue-50/60' : ''}`}
-                  >
-                    <div className={`w-2.5 h-2.5 rotate-45 border border-white shrink-0 ${isSource ? 'bg-red-500' : isDark ? 'bg-amber-500' : 'bg-slate-400'}`} />
-                    <div className="flex-1 min-w-0">
-                      <span className="font-bold text-navy-900">{c.id.replace('DEMO-', '')}</span>
-                      <span className="text-slate-400 ml-1">{v?.vessel_type}</span>
+                  <div key={c.id} onClick={() => setSelectedVessel(c.id)} className={`flex items-center justify-between p-2 cursor-pointer rounded mb-1 transition-colors ${selectedVessel === c.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                    <div className="flex items-center gap-3">
+                       <Navigation className={`w-4 h-4 ${isSource ? 'text-red-500' : isDark ? 'text-amber-500' : 'text-emerald-500'} ${isDark ? '' : 'fill-current'}`} />
+                       <div className="flex flex-col">
+                          <span className="text-xs font-bold text-navy-900 flex items-center gap-1">{c.id.replace('DEMO-', '')} {isDark && <AlertTriangle className="w-3 h-3 text-amber-500" />}</span>
+                          <span className="text-[10px] text-slate-500">{v?.vessel_type}</span>
+                       </div>
                     </div>
-                    <span className="font-black text-navy-900">{(c.attribution_score * 100).toFixed(0)}%</span>
-                    {isDark && <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />}
+                    <span className="text-xs font-black text-navy-900">{(c.attribution_score * 100).toFixed(0)}%</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Layer Controls Sidebar */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm shrink-0">
-            <div className="p-2.5 border-b border-slate-100 bg-slate-50 text-xs font-bold text-navy-900">Map Layers</div>
-            <div className="p-2.5 flex flex-col gap-2 text-[10px]">
-              <LayerCheck label="SAR Background" checked={layers.sar} onChange={v => setLayers({ ...layers, sar: v })} />
-              {layers.sar && (
-                <input type="range" min={0} max={1} step={0.05} value={layers.sarOpacity}
-                  onChange={e => setLayers({ ...layers, sarOpacity: +e.target.value })}
-                  className="w-full h-1 bg-slate-200 rounded accent-slate-500" />
-              )}
-              <LayerCheck label="Model Detection" checked={layers.unet} onChange={v => setLayers({ ...layers, unet: v })} />
-              {layers.unet && (
-                <input type="range" min={0} max={1} step={0.05} value={layers.unetOpacity}
-                  onChange={e => setLayers({ ...layers, unetOpacity: +e.target.value })}
-                  className="w-full h-1 bg-slate-200 rounded accent-orange-500" />
-              )}
-              <LayerCheck label="Detected Slick" checked={layers.slick} onChange={v => setLayers({ ...layers, slick: v })} />
-              <LayerCheck label="Drift Origin" checked={layers.driftOrigin} onChange={v => setLayers({ ...layers, driftOrigin: v })} />
-              <LayerCheck label="Drift Heatmap" checked={layers.driftHeatmap} onChange={v => setLayers({ ...layers, driftHeatmap: v })} />
-              <LayerCheck label="Drift Forecast" checked={layers.driftForecast} onChange={v => setLayers({ ...layers, driftForecast: v })} />
-              <LayerCheck label="Vessel Tracks" checked={layers.vessels} onChange={v => setLayers({ ...layers, vessels: v })} />
+          {/* Recent Activity */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col shrink-0">
+            <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+              <h3 className="font-bold text-navy-900 text-sm">Recent Activity</h3>
+              <button className="text-[10px] font-bold text-blue-600 hover:underline">View All</button>
+            </div>
+            <div className="p-3 flex flex-col gap-3">
+               <ActivityRow color="bg-red-500" text={`New oil spill detected (${data.case.case_id})`} time="2 hours ago" icon={<Droplet className="w-3 h-3 text-red-500" />} />
+               <ActivityRow color="bg-amber-500" text="Dark vessel detected (Unmatched)" time="3 hours ago" icon={<EyeOff className="w-3 h-3 text-amber-500" />} />
+               <ActivityRow color="bg-blue-500" text="Satellite scene processed (S1A)" time="4 hours ago" icon={<Satellite className="w-3 h-3 text-blue-500" />} />
+               <ActivityRow color="bg-emerald-500" text="Investigation completed (OS-2025-088)" time="6 hours ago" icon={<CheckCircle2 className="w-3 h-3 text-emerald-500" />} />
             </div>
           </div>
+
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, sub, bg, fg }: { icon: React.ReactNode; label: string; value: string; sub: string; bg: string; fg: string }) {
+function StatCard({ icon, label, value, subtext, bg, fg, trend, trendColor, badge, badgeColor }: any) {
+  const bc = badgeColor === 'red' ? 'bg-red-50 text-red-500' : badgeColor === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500';
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-2.5 shadow-sm flex items-center gap-2.5">
-      <div className={`w-9 h-9 rounded ${bg} ${fg} flex items-center justify-center shrink-0`}>{icon}</div>
-      <div>
-        <p className="text-[9px] font-bold text-slate-500 uppercase">{label}</p>
-        <p className="text-sm font-black text-navy-900 leading-none mt-0.5">{value}</p>
-        <p className="text-[8px] text-slate-400 mt-0.5">{sub}</p>
+    <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex flex-col justify-between min-w-[160px] flex-1">
+      <div className="flex items-center justify-between mb-2">
+         <div className={`w-8 h-8 rounded ${bg} ${fg} flex items-center justify-center shrink-0`}>{icon}</div>
+         {badge && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bc}`}>{badge}</span>}
       </div>
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">{label}</p>
+      <div className="flex items-baseline gap-2 mt-1">
+         <p className="text-2xl font-black text-navy-900 leading-none">{value}</p>
+         {trend && <span className={`text-[11px] font-bold ${trendColor}`}>{trend}</span>}
+      </div>
+      <p className="text-[10px] text-slate-400 mt-1 truncate">{subtext}</p>
     </div>
   );
 }
 
-function LayerCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="accent-blue-600 w-3 h-3" />
-      <span className="font-medium">{label}</span>
-    </label>
-  );
+function EnvMetric({ icon, label, val, sub }: any) {
+   return (
+      <div className="flex items-center gap-3">
+         {icon}
+         <div className="flex flex-col">
+            <span className="text-[9px] text-slate-500 font-bold uppercase">{label}</span>
+            <span className="text-sm font-black text-navy-900 leading-tight">{val}</span>
+            <span className="text-[9px] text-slate-400">{sub}</span>
+         </div>
+      </div>
+   );
+}
+
+function DetectionRow({ id, area, time, status, color, statusColor }: any) {
+   return (
+      <div className="flex items-center justify-between p-2 hover:bg-slate-50 rounded cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
+         <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-2.5 h-2.5 rounded-full ${color} shrink-0`} />
+            <div className="flex flex-col min-w-0">
+               <span className="text-xs font-bold text-navy-900 truncate">{id}</span>
+               <span className="text-[9px] text-slate-500 truncate">{time} • {area}</span>
+            </div>
+         </div>
+         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${statusColor} shrink-0`}>{status}</span>
+      </div>
+   );
+}
+
+function ActivityRow({ text, time, icon }: any) {
+   return (
+      <div className="flex gap-3 items-start">
+         <div className="mt-0.5 bg-slate-50 p-1 rounded border border-slate-100">{icon}</div>
+         <div className="flex flex-col min-w-0">
+            <span className="text-xs font-medium text-navy-900 leading-tight">{text}</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">{time}</span>
+         </div>
+      </div>
+   );
 }

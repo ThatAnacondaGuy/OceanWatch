@@ -141,7 +141,8 @@ def get_ennore_demo():
             "source": "Lagrangian Drift Ensemble Manager"
         },
         "vessels": vessels_data,
-                "ais": {
+        "ais": {
+            "status": "synthetic_demo",
             "tracks_asset": "/api/assets/artifacts/demo/ennore/ais_tracks.geojson",
             "playback_asset": "/api/assets/artifacts/demo/ennore/ais_playback.json"
         },
