@@ -10,7 +10,18 @@ import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 
 export default function DashboardScreen() {
-  const { data } = useApp();
+  const { data, setSelectedVessel } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  const handleSearch = (e: any) => {
+     const val = e.target.value;
+     setSearchQuery(val);
+     if (val.toUpperCase().includes('MMSI-001')) setSelectedVessel('DEMO-MMSI-001');
+     else if (val.toUpperCase().includes('MMSI-002')) setSelectedVessel('DEMO-MMSI-002');
+     else if (val.toUpperCase().includes('MMSI-003')) setSelectedVessel('DEMO-MMSI-003');
+     else if (val.toUpperCase().includes('MMSI-004')) setSelectedVessel('DEMO-MMSI-004');
+     else if (val.toUpperCase().includes('RADAR-005')) setSelectedVessel('DEMO-RADAR-005');
+  };
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Live Map');
 
@@ -92,6 +103,8 @@ export default function DashboardScreen() {
               <input 
                 type="text" 
                 placeholder="Search location, vessel or incident..."
+                value={searchQuery}
+                onChange={handleSearch}
                 className="pl-9 pr-4 py-1.5 text-xs border border-slate-200 rounded-full w-64 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -137,7 +150,15 @@ export default function DashboardScreen() {
                </div>
                <div className="flex justify-between border-b border-slate-50 pb-2">
                   <span className="text-slate-500">Likely Source</span>
-                  <span className="font-bold text-navy-900 flex items-center gap-1">{sourceVessel?.id.replace('DEMO-','')} <span className="text-[10px] text-slate-400 font-normal">(Confidence: {(sourceVessel.attribution_score*100).toFixed(0)}%)</span></span>
+                  <span className="font-bold text-navy-900">{sourceVessel?.id}</span>
+               </div>
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Attribution Score</span>
+                  <span className="font-bold text-navy-900">{(sourceVessel.attribution_score * 100).toFixed(1)}%</span>
+               </div>
+               <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Evidence</span>
+                  <span className="font-bold text-navy-900">HIGH</span>
                </div>
                <div className="flex justify-between">
                   <span className="text-slate-500">Status</span>
@@ -235,17 +256,17 @@ export default function DashboardScreen() {
             <div className="flex flex-col gap-2.5">
                <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-red-500 rounded-full shrink-0" />
-                  <span className="text-xs font-bold text-navy-900 flex-1 truncate">New oil spill detected (ENNORE-2017-DEMO)</span>
+                  <span className="text-xs font-bold text-navy-900 flex-1 truncate">SAR validation passed</span>
                   <span className="text-[10px] text-slate-400">04:00 Z</span>
                </div>
                <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
-                  <span className="text-xs font-medium text-slate-700 flex-1 truncate">Vessel match found: {sourceVessel?.id.replace('DEMO-','')}</span>
+                  <span className="text-xs font-medium text-slate-700 flex-1 truncate">AIS playback loaded</span>
                   <span className="text-[10px] text-slate-400">04:01 Z</span>
                </div>
                <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
-                  <span className="text-xs font-medium text-slate-700 flex-1 truncate">Model processing completed (Sentinel-1)</span>
+                  <span className="text-xs font-medium text-slate-700 flex-1 truncate">Drift analysis completed</span>
                   <span className="text-[10px] text-slate-400">03:55 Z</span>
                </div>
             </div>
@@ -260,10 +281,10 @@ export default function DashboardScreen() {
                  className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors rounded-lg border border-emerald-100 text-[11px] font-bold">
                   <SearchIcon className="w-3.5 h-3.5" /> Search Vessel
                </button>
-               <button className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg border border-blue-100 text-[11px] font-bold">
+               <button title="Annotation mode unavailable in current demo dataset." className="flex items-center justify-center gap-2 bg-blue-50/50 text-blue-700/50 cursor-not-allowed rounded-lg border border-blue-100/50 text-[11px] font-bold">
                   <MapPin className="w-3.5 h-3.5" /> Mark Area
                </button>
-               <button className="flex items-center justify-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors rounded-lg border border-purple-100 text-[11px] font-bold">
+               <button title="Report generation endpoint unavailable in current demo." className="flex items-center justify-center gap-2 bg-purple-50/50 text-purple-700/50 cursor-not-allowed rounded-lg border border-purple-100/50 text-[11px] font-bold">
                   <FileText className="w-3.5 h-3.5" /> Generate Report
                </button>
                <button 
