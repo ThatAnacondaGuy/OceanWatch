@@ -1,10 +1,9 @@
-
-import { useEffect, useRef, useState } from 'react';
+import { getVesselStateAtTime } from '../../utils/ais';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useApp } from '../../context/AppContext';
-import { normalizeAISTime } from '../../utils/ais';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Droplet } from 'lucide-react';
 
 const SATELLITE_STYLE: any = {
   version: 8,
@@ -22,8 +21,8 @@ const SATELLITE_STYLE: any = {
     }
   },
   layers: [
-    { id: 'satellite-layer', type: 'raster', source: 'esri-satellite' },
-    { id: 'labels-layer', type: 'raster', source: 'carto-labels' }
+    { id: 'satellite-layer', type: 'raster', source: 'esri-satellite', paint: { 'raster-saturation': -0.2 } },
+    { id: 'labels-layer', type: 'raster', source: 'carto-labels', paint: { 'raster-opacity': 0.7 } }
   ]
 };
 
@@ -31,9 +30,8 @@ export default function DashboardMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Record<string, maplibregl.Marker>>({});
-  const popupRef = useRef<maplibregl.Popup | null>(null);
   
-  const { data, selectedVessel, setSelectedVessel, playbackTime, playbackData } = useApp();
+  const { data, selectedVessel, setSelectedVessel, playbackData, playbackTime } = useApp();
   
   const [panelOpen, setPanelOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -42,18 +40,34 @@ export default function DashboardMap() {
 
   const [layers, setLayers] = useState({
     sar: true,
-    sarOpacity: 0.2,
+    sarOpacity: 0.20,
+    unet: true,
+    unetOpacity: 0.25,
     slick: true,
+    slickOpacity: 0.60,
     driftHeatmap: true,
+    driftHeatmapOpacity: 0.35,
     driftOrigin: true,
     driftForecast: false,
-    vesselSelectedTrack: true,
-    vesselOtherTracks: true,
-    vesselCurrentPosition: true
+    forecastOpacity: 0.45,
+    vesselTracks: true,
+    vesselTrackOpacity: 0.85
   });
 
+  // Safe coordinates
+  const boundsCoords = useMemo((): [[number, number], [number, number], [number, number], [number, number]] | null => {
+    if (!data?.sar?.bounds) return null;
+    const b = data.sar.bounds;
+    return [
+      [b.min_lon, b.max_lat],
+      [b.max_lon, b.max_lat],
+      [b.max_lon, b.min_lat],
+      [b.min_lon, b.min_lat]
+    ];
+  }, [data]);
+
   useEffect(() => {
-    if (mapRef.current || !data || !mapContainer.current) return;
+    if (mapRef.current || !data || !mapContainer.current || !boundsCoords) return;
 
     const m = new maplibregl.Map({
       container: mapContainer.current,
@@ -69,438 +83,409 @@ export default function DashboardMap() {
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
 
     m.on('load', () => {
-
-      // Add SAR
-      m.addSource('sar-img', {
-        type: 'image',
-        url: '/api/demo/ennore/sar.png',
-        coordinates: [
-          [data.sar.bounds.min_lon, data.sar.bounds.max_lat],
-          [data.sar.bounds.max_lon, data.sar.bounds.max_lat],
-          [data.sar.bounds.max_lon, data.sar.bounds.min_lat],
-          [data.sar.bounds.min_lon, data.sar.bounds.min_lat]
-        ]
-      });
-      m.addLayer({
-        id: 'sar-layer',
-        type: 'raster',
-        source: 'sar-img',
-        paint: { 'raster-opacity': layers.sarOpacity, 'raster-fade-duration': 0 }
-      });
-
-      // Add Slick
-      m.addSource('slick', { type: 'geojson', data: '/api/demo/ennore/slick' });
-      m.addLayer({
-        id: 'slick-fill',
-        type: 'fill',
-        source: 'slick',
-        paint: { 'fill-color': '#ff4500', 'fill-opacity': 0.3 }
-      });
-      m.addLayer({
-        id: 'slick-line',
-        type: 'line',
-        source: 'slick',
-        paint: { 'line-color': '#ff0000', 'line-width': 2 }
-      });
-      m.addLayer({
-        id: 'slick-label',
-        type: 'symbol',
-        source: 'slick',
-        layout: {
-            'text-field': 'OIL SPILL DETECTED\n106 px (Relative)',
-            'text-font': ['Open Sans Bold'],
-            'text-size': 10,
-            'text-offset': [0, 1.5]
-        },
-        paint: {
-            'text-color': '#ffffff',
-            'text-halo-color': '#ff0000',
-            'text-halo-width': 1
-        }
-      });
-
-      // Slick Centroid Popup
-      m.on('click', 'slick-fill', (e: any) => {
-        if (popupRef.current) popupRef.current.remove();
-        const p = new maplibregl.Popup({ closeButton: false, className: 'custom-popup' })
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div style="background:#0f172a;color:white;padding:10px;border-radius:6px;border:1px solid #ef4444;font-family:system-ui;min-width:200px;">
-              <div style="color:#ef4444;font-size:10px;font-weight:900;letter-spacing:1px;margin-bottom:6px;">OIL SPILL DETECTED</div>
-              <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8">Area:</span> <strong>106 px relative</strong></div>
-              <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8">Validation:</span> <strong style="color:#10b981">PASS</strong></div>
-              <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8">Geometry:</span> <strong>Elongated</strong></div>
-              <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8">Model:</span> <strong>Attention U-Net</strong></div>
-              <div style="font-size:11px;display:flex;justify-content:space-between;"><span style="color:#94a3b8">Wind Gate:</span> <strong style="color:#10b981">PASS</strong></div>
-            </div>
-          `)
-          .addTo(m);
-        popupRef.current = p;
-      });
-
-      // Add Drift Envelope
-      m.addSource('drift', { type: 'geojson', data: '/api/demo/ennore/drift' });
-      m.addLayer({
-        id: 'drift-fill',
-        type: 'fill',
-        source: 'drift',
-        paint: { 'fill-color': '#06b6d4', 'fill-opacity': 0.15 }
-      });
-      m.addLayer({
-        id: 'drift-line',
-        type: 'line',
-        source: 'drift',
-        paint: { 'line-color': '#06b6d4', 'line-width': 1, 'line-dasharray': [4, 4] }
-      });
-
-      // Add Drift Heatmap
-      m.addSource('drift-heatmap', {
-        type: 'image',
-        url: '/api/demo/ennore/drift_heatmap.png',
-        coordinates: [
-          [data.sar.bounds.min_lon, data.sar.bounds.max_lat],
-          [data.sar.bounds.max_lon, data.sar.bounds.max_lat],
-          [data.sar.bounds.max_lon, data.sar.bounds.min_lat],
-          [data.sar.bounds.min_lon, data.sar.bounds.min_lat]
-        ]
-      });
-      m.addLayer({
-        id: 'drift-heatmap-layer',
-        type: 'raster',
-        source: 'drift-heatmap',
-        paint: { 'raster-opacity': 0.45, 'raster-fade-duration': 0 }
-      });
-
-      // Add Forward Forecast
-      m.addSource('forecast', { type: 'geojson', data: '/api/demo/ennore/forecast' });
-      m.addLayer({
-        id: 'forecast-fill',
-        type: 'fill',
-        source: 'forecast',
-        paint: { 'fill-color': '#a855f7', 'fill-opacity': 0.15 }
-      });
-      m.addLayer({
-        id: 'forecast-line',
-        type: 'line',
-        source: 'forecast',
-        paint: { 'line-color': '#a855f7', 'line-width': 2, 'line-dasharray': [4, 2] }
-      });
-
-      // Add Drift Origin Marker
-      if (data?.drift?.origin) {
-        const originEl = document.createElement('div');
-        originEl.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;">
-             <div style="width:16px;height:16px;border:3px solid #00ffff;border-radius:50%;background:rgba(0,255,255,0.3);position:relative;">
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;background:#00ffff;border-radius:50%;"></div>
-             </div>
-             <div style="background:rgba(0,0,0,0.7);color:#00ffff;padding:2px 4px;font-size:9px;font-weight:bold;margin-top:4px;border-radius:2px;border:1px solid #00ffff;white-space:nowrap;">
-               BACKWARD DRIFT ORIGIN
-             </div>
-          </div>
-        `;
-        markersRef.current['__drift_origin__'] = new maplibregl.Marker({ element: originEl, anchor: 'top' })
-          .setLngLat([data.drift.origin.lon, data.drift.origin.lat])
-          .addTo(m);
-      }
-
-      // Add Dynamic Tracks Source
-      m.addSource('dynamic-tracks-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      m.addSource('dynamic-tracks-future-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-
-      // Neutral Tracks (past)
-      m.addLayer({
-        id: 'tracks-neutral',
-        type: 'line',
-        source: 'dynamic-tracks-src',
-        paint: { 'line-color': ['case', ['==', ['get', 'isSelected'], true], '#3b82f6', '#10b981'], 'line-width': ['case', ['==', ['get', 'isSelected'], true], 3, 1], 'line-opacity': 0.6 },
-        filter: ['==', ['get', 'type'], 'neutral']
-      });
-
-      // Dark Tracks (past)
-      m.addLayer({
-        id: 'tracks-dark',
-        type: 'line',
-        source: 'dynamic-tracks-src',
-        paint: { 'line-color': '#f59e0b', 'line-width': ['case', ['==', ['get', 'isSelected'], true], 3, 1.5], 'line-dasharray': [4, 4] },
-        filter: ['==', ['get', 'type'], 'dark']
-      });
-
-      // Source Tracks (past)
-      m.addLayer({
-        id: 'tracks-source',
-        type: 'line',
-        source: 'dynamic-tracks-src',
-        paint: { 'line-color': '#ef4444', 'line-width': ['case', ['==', ['get', 'isSelected'], true], 4, 2.5] },
-        filter: ['==', ['get', 'type'], 'source']
-      });
-
-      // Future Trail (Dashed)
-      m.addLayer({
-        id: 'tracks-future',
-        type: 'line',
-        source: 'dynamic-tracks-future-src',
-        paint: { 'line-color': '#94a3b8', 'line-width': 1.5, 'line-dasharray': [2, 4], 'line-opacity': 0.6 }
-      });
-
-      // Vessel Markers
-      data?.vessels.forEach((v: any) => {
-        const isSource = v.id === data?.attribution?.results[0]?.id;
-        const isDark = v.vessel_type === 'Unknown / Dark Vessel';
-        const fillColor = isSource ? '#ef4444' : isDark ? '#f59e0b' : '#10b981';
-        const strokeColor = isSource ? '#991b1b' : isDark ? '#92400e' : '#047857';
-        const el = document.createElement('div');
-        el.style.cssText = `position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;z-index:${isSource ? 50 : 20};`;
-        
-        el.innerHTML = `
-          <div class="vessel-label" style="opacity:${isSource ? 1 : 0};font-size:9px;font-weight:800;background:rgba(15,23,42,0.9);color:white;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;border:1px solid ${fillColor};">${isSource ? 'SOURCE: ' : ''}${v.id.replace('DEMO-', '')}</div>
-          <div class="vessel-icon" style="transform:rotate(${v.heading}deg);transform-origin:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-             <svg width="18" height="26" viewBox="0 0 24 36" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2">
-                <path d="M12 2 L22 12 L18 34 L6 34 L2 12 Z" />
-             </svg>
-          </div>
-        `;
-        
-        el.addEventListener('mouseenter', () => {
-           const lbl = el.querySelector('.vessel-label') as HTMLElement;
-           if (lbl) lbl.style.opacity = '1';
-        });
-        el.addEventListener('mouseleave', () => {
-           if (v.id !== data?.attribution?.results[0]?.id && v.id !== selectedVessel) {
-               const lbl = el.querySelector('.vessel-label') as HTMLElement;
-               if (lbl) lbl.style.opacity = '0';
-           }
-        });
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          setSelectedVessel(v.id);
-        });
-
-        markersRef.current[v.id] = new maplibregl.Marker({ element: el, anchor: 'center' })
-          .setLngLat([v.position.lon, v.position.lat])
-          .addTo(m);
-      });
-    });
-
-    return () => {
-      m.remove();
-      mapRef.current = null;
-      markersRef.current = {};
-    };
-  }, [data]);
-
-  // Sync Layers
-  useEffect(() => {
-    const m = mapRef.current;
-    if (!m || !m.isStyleLoaded()) return;
-
-    if (m.getLayer('sar-layer')) m.setLayoutProperty('sar-layer', 'visibility', layers.sar ? 'visible' : 'none');
-    if (m.getLayer('sar-layer')) m.setPaintProperty('sar-layer', 'raster-opacity', layers.sarOpacity);
-    
-    if (m.getLayer('slick-fill')) m.setLayoutProperty('slick-fill', 'visibility', layers.slick ? 'visible' : 'none');
-    if (m.getLayer('slick-line')) m.setLayoutProperty('slick-line', 'visibility', layers.slick ? 'visible' : 'none');
-    if (m.getLayer('slick-label')) m.setLayoutProperty('slick-label', 'visibility', layers.slick ? 'visible' : 'none');
-    
-    if (m.getLayer('drift-heatmap-layer')) m.setLayoutProperty('drift-heatmap-layer', 'visibility', layers.driftHeatmap ? 'visible' : 'none');
-    
-    if (m.getLayer('drift-fill')) m.setLayoutProperty('drift-fill', 'visibility', layers.driftOrigin ? 'visible' : 'none');
-    if (m.getLayer('drift-line')) m.setLayoutProperty('drift-line', 'visibility', layers.driftOrigin ? 'visible' : 'none');
-    
-    if (m.getLayer('forecast-fill')) m.setLayoutProperty('forecast-fill', 'visibility', layers.driftForecast ? 'visible' : 'none');
-    if (m.getLayer('forecast-line')) m.setLayoutProperty('forecast-line', 'visibility', layers.driftForecast ? 'visible' : 'none');
-    
-    if (markersRef.current['__drift_origin__']) {
-       markersRef.current['__drift_origin__'].getElement().style.display = layers.driftOrigin ? 'flex' : 'none';
-    }
-
-    if (m.getLayer('tracks-neutral')) m.setLayoutProperty('tracks-neutral', 'visibility', layers.vesselOtherTracks ? 'visible' : 'none');
-    if (m.getLayer('tracks-dark')) m.setLayoutProperty('tracks-dark', 'visibility', layers.vesselOtherTracks ? 'visible' : 'none');
-    if (m.getLayer('tracks-source')) m.setLayoutProperty('tracks-source', 'visibility', layers.vesselSelectedTrack ? 'visible' : 'none');
-    if (m.getLayer('tracks-future')) m.setLayoutProperty('tracks-future', 'visibility', layers.vesselSelectedTrack ? 'visible' : 'none');
-
-    data?.vessels.forEach((v: any) => {
-      if (markersRef.current[v.id]) {
-         markersRef.current[v.id].getElement().style.display = layers.vesselCurrentPosition ? 'flex' : 'none';
-         const isSource = v.id === data?.attribution?.results[0]?.id;
-         const lbl = markersRef.current[v.id].getElement().querySelector('.vessel-label') as HTMLElement;
-         if (lbl) {
-            lbl.style.opacity = (isSource || v.id === selectedVessel) ? '1' : '0';
-         }
-      }
-    });
-
-  }, [layers, data, selectedVessel]);
-
-  // Sync Tracks with Playback
-  useEffect(() => {
-    if (!mapRef.current || !mapRef.current.isStyleLoaded() || !playbackData) return;
-    
-    const pastFeatures: any[] = [];
-    const futureFeatures: any[] = [];
-
-    playbackData.forEach((track: any) => {
-      const isSource = track.vessel_id === data?.attribution?.results[0]?.id;
-      const vObj = data?.vessels.find(v => v.id === track.vessel_id);
-      const isDark = vObj?.vessel_type === 'Unknown / Dark Vessel';
-      const isSelected = track.vessel_id === selectedVessel;
-
-      const trackType = isSource ? 'source' : isDark ? 'dark' : 'neutral';
       
-      const pts = track.history;
-      let pastCoords: number[][] = [];
-      let futureCoords: number[][] = [];
+      // 3. SAR raster
+      m.addSource('sar-img', { type: 'image', url: '/api/assets/artifacts/demo/ennore/sar_preview.png', coordinates: boundsCoords });
+      m.addLayer({ id: 'sar-layer', type: 'raster', source: 'sar-img', paint: { 'raster-opacity': layers.sarOpacity, 'raster-fade-duration': 0 } });
+
+      // 4. U-Net / model raster
+      m.addSource('unet-img', { type: 'image', url: '/api/assets/artifacts/demo/ennore/u_net_probability.png', coordinates: boundsCoords });
+      m.addLayer({ id: 'unet-layer', type: 'raster', source: 'unet-img', paint: { 'raster-opacity': layers.unetOpacity, 'raster-fade-duration': 0 } });
+
+      // 5. Drift heatmap
+      m.addSource('drift-heatmap', { type: 'image', url: '/api/assets/artifacts/demo/ennore/drift_heatmap.png', coordinates: boundsCoords });
+      m.addLayer({ id: 'drift-heatmap-layer', type: 'raster', source: 'drift-heatmap', paint: { 'raster-opacity': layers.driftHeatmapOpacity, 'raster-fade-duration': 0 } });
+
+      // 6. Drift uncertainty
+      m.addSource('drift-uncertainty', { type: 'geojson', data: '/api/assets/artifacts/demo/ennore/drift_uncertainty.geojson' });
+      m.addLayer({ id: 'drift-uncertainty-fill', type: 'fill', source: 'drift-uncertainty', paint: { 'fill-color': '#00ffff', 'fill-opacity': 0.15 } });
+      m.addLayer({ id: 'drift-uncertainty-line', type: 'line', source: 'drift-uncertainty', paint: { 'line-color': '#00ffff', 'line-width': 1, 'line-dasharray': [2, 2], 'line-opacity': 0.6 } });
+
+      // 7. Forward forecast
+      m.addSource('forecast', { type: 'geojson', data: '/api/assets/artifacts/demo/ennore/forward_forecast.geojson' });
+      m.addLayer({ id: 'forecast-fill', type: 'fill', source: 'forecast', paint: { 'fill-color': '#ff00ff', 'fill-opacity': 0.15 } });
+      m.addLayer({ id: 'forecast-line', type: 'line', source: 'forecast', paint: { 'line-color': '#ff00ff', 'line-width': 2, 'line-dasharray': [4, 2] } });
+
+      // 8. Slick polygon (Actual Detection)
+      m.addSource('slick', { type: 'geojson', data: '/api/assets/artifacts/demo/ennore/detected_slick.geojson' });
+      m.addLayer({ id: 'slick-glow', type: 'line', source: 'slick', paint: { 'line-color': '#ff4500', 'line-width': 8, 'line-opacity': 0.3, 'line-blur': 4 } });
+      m.addLayer({ id: 'slick-fill', type: 'fill', source: 'slick', paint: { 'fill-color': '#ff2200', 'fill-opacity': layers.slickOpacity } });
+      m.addLayer({ id: 'slick-line', type: 'line', source: 'slick', paint: { 'line-color': '#ff2200', 'line-width': 2.5 } });
+
+      // Calculate simple bbox for Slick Bracket (Fake bounding box)
+      // Ennore Slick is roughly [80.3464, 13.1279] to [80.3507, 13.1367]
+      const minX = 80.344, minY = 13.126, maxX = 80.352, maxY = 13.138;
+      const bracketLen = 0.001;
+      const bracketGeojson = {
+        type: 'FeatureCollection',
+        features: [
+          // Top Left
+          { type: 'Feature', geometry: { type: 'LineString', coordinates: [[minX, minY+bracketLen], [minX, minY], [minX+bracketLen, minY]] } },
+          // Top Right
+          { type: 'Feature', geometry: { type: 'LineString', coordinates: [[maxX-bracketLen, minY], [maxX, minY], [maxX, minY+bracketLen]] } },
+          // Bottom Right
+          { type: 'Feature', geometry: { type: 'LineString', coordinates: [[maxX, maxY-bracketLen], [maxX, maxY], [maxX-bracketLen, maxY]] } },
+          // Bottom Left
+          { type: 'Feature', geometry: { type: 'LineString', coordinates: [[minX+bracketLen, maxY], [minX, maxY], [minX, maxY-bracketLen]] } }
+        ]
+      };
       
-      for (let i = 0; i < pts.length; i++) {
-        const ptTime = normalizeAISTime(pts[i].timestamp);
-        if (ptTime <= (playbackTime || 0)) {
-          pastCoords.push([pts[i].lon, pts[i].lat]);
-        } else {
-          if (futureCoords.length === 0 && pastCoords.length > 0) {
-            futureCoords.push(pastCoords[pastCoords.length - 1]);
+      m.addSource('slick-bbox', { type: 'geojson', data: bracketGeojson as any });
+      m.addLayer({ id: 'slick-bbox-line', type: 'line', source: 'slick-bbox', paint: { 'line-color': '#ff2200', 'line-width': 2, 'line-opacity': 0.8 } });
+
+      // Slick Centroid Label + Marker
+      const slickEl = document.createElement('div');
+      slickEl.innerHTML = `
+        <div style="background: rgba(255,0,0,0.1); border: 2px solid #ff2200; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px #ff2200;"></div>
+        <div style="margin-top: -12px; margin-left: 12px; background: rgba(0,0,0,0.85); border: 1px solid #ff2200; padding: 6px 10px; border-radius: 4px; pointer-events: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.5);">
+          <div style="color: #ff2200; font-weight: bold; font-size: 11px; letter-spacing: 0.5px;">DETECTED OIL SLICK</div>
+          <div style="color: #ccc; font-size: 10px; margin-top: 3px;">Area: ${data.slick.area} px (Relative)</div>
+          <div style="color: #ccc; font-size: 10px;">Validation: ${data.slick.validation_status}</div>
+          <div style="color: #66b2ff; font-size: 10px; margin-top: 3px;">ATTENTION U-NET</div>
+        </div>
+      `;
+      new maplibregl.Marker({ element: slickEl })
+        .setLngLat([data.slick.centroid.lon, data.slick.centroid.lat])
+        .addTo(m);
+
+      // Drift Origin Target
+      const originEl = document.createElement('div');
+      originEl.innerHTML = `
+        <div style="position: relative;">
+          <div style="position: absolute; border: 2px solid #00ffff; width: 24px; height: 24px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 8px #00ffff; pointer-events: none;"></div>
+          <div style="position: absolute; width: 4px; height: 4px; background: #00ffff; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;"></div>
+          <div style="position: absolute; width: 2px; height: 10px; background: #00ffff; top: -18px; left: -1px; pointer-events: none;"></div>
+          <div style="position: absolute; width: 2px; height: 10px; background: #00ffff; bottom: -18px; left: -1px; pointer-events: none;"></div>
+          <div style="position: absolute; width: 10px; height: 2px; background: #00ffff; left: -18px; top: -1px; pointer-events: none;"></div>
+          <div style="position: absolute; width: 10px; height: 2px; background: #00ffff; right: -18px; top: -1px; pointer-events: none;"></div>
+          <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.8); border: 1px solid #00ffff; padding: 4px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none;">
+            <div style="color: #00ffff; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">BACKWARD DRIFT ORIGIN</div>
+          </div>
+        </div>
+      `;
+      new maplibregl.Marker({ element: originEl })
+        .setLngLat([data.drift.origin.lon, data.drift.origin.lat])
+        .addTo(m);
+
+      // 10. Vessel Tracks
+      m.addSource('vessel-tracks', { type: 'geojson', data: '/api/assets/artifacts/demo/ennore/ais_tracks.geojson' });
+      // Source vessel track (red)
+      m.addLayer({
+        id: 'vessel-tracks-source',
+        type: 'line',
+        source: 'vessel-tracks',
+        filter: ['==', 'mmsi', 'DEMO-MMSI-001'],
+        paint: { 'line-color': '#ff3333', 'line-width': 3, 'line-opacity': layers.vesselTrackOpacity, 'line-dasharray': [2, 1] }
+      });
+      // Dark vessel track (amber)
+      m.addLayer({
+        id: 'vessel-tracks-dark',
+        type: 'line',
+        source: 'vessel-tracks',
+        filter: ['==', 'mmsi', 'DEMO-RADAR-005'],
+        paint: { 'line-color': '#ffb700', 'line-width': 2, 'line-opacity': layers.vesselTrackOpacity, 'line-dasharray': [3, 2] }
+      });
+      // Normal vessels (green/blue)
+      m.addLayer({
+        id: 'vessel-tracks-normal',
+        type: 'line',
+        source: 'vessel-tracks',
+        filter: ['all', ['!=', 'mmsi', 'DEMO-MMSI-001'], ['!=', 'mmsi', 'DEMO-RADAR-005']],
+        paint: { 'line-color': '#00ff88', 'line-width': 1.5, 'line-opacity': layers.vesselTrackOpacity * 0.7 }
+      });
+
+      // Environmental Vectors (Subtle)
+      const windEl = document.createElement('div');
+      windEl.innerHTML = `<div style="color: #fff; font-size: 10px; opacity: 0.8; text-shadow: 1px 1px 2px #000;">WIND ↗</div>`;
+      new maplibregl.Marker({ element: windEl }).setLngLat([80.32, 13.20]).addTo(m);
+
+      // Source Relationship Line
+      m.addSource('source-relationship', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [[data.drift.origin.lon, data.drift.origin.lat], [80.4225, 13.295]] // roughly pointing to MMSI-001
           }
-          futureCoords.push([pts[i].lon, pts[i].lat]);
         }
+      });
+      m.addLayer({
+        id: 'source-relationship-line',
+        type: 'line',
+        source: 'source-relationship',
+        paint: { 'line-color': '#00ffff', 'line-width': 1.5, 'line-dasharray': [4, 4], 'line-opacity': 0.5 }
+      });
+    });
+  }, [data, boundsCoords]); // Init once
+
+  // Dynamic layers opacity and visibility
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const m = mapRef.current;
+    
+    const setVis = (id: string, vis: boolean) => {
+      if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis ? 'visible' : 'none');
+    };
+    const setOp = (id: string, op: number, type: 'raster' | 'fill' | 'line') => {
+      if (m.getLayer(id)) m.setPaintProperty(id, `${type}-opacity`, op);
+    };
+
+    setVis('sar-layer', layers.sar);
+    setOp('sar-layer', layers.sarOpacity, 'raster');
+
+    setVis('unet-layer', layers.unet);
+    setOp('unet-layer', layers.unetOpacity, 'raster');
+
+    setVis('slick-glow', layers.slick);
+    setVis('slick-fill', layers.slick);
+    setVis('slick-line', layers.slick);
+    setVis('slick-bbox-line', layers.slick);
+    if(layers.slick) setOp('slick-fill', layers.slickOpacity, 'fill');
+
+    setVis('drift-heatmap-layer', layers.driftHeatmap);
+    setOp('drift-heatmap-layer', layers.driftHeatmapOpacity, 'raster');
+
+    setVis('drift-uncertainty-fill', layers.driftOrigin);
+    setVis('drift-uncertainty-line', layers.driftOrigin);
+
+    setVis('forecast-fill', layers.driftForecast);
+    setVis('forecast-line', layers.driftForecast);
+    if(layers.driftForecast) setOp('forecast-fill', layers.forecastOpacity, 'fill');
+
+    setVis('vessel-tracks-source', layers.vesselTracks);
+    setVis('vessel-tracks-dark', layers.vesselTracks);
+    setVis('vessel-tracks-normal', layers.vesselTracks);
+
+  }, [layers]);
+
+  // Vessels Marker Sync
+  useEffect(() => {
+    if (!mapRef.current || !data) return;
+    const m = mapRef.current;
+    const vessels = data.vessels;
+
+    vessels.forEach((v: any) => {
+            const isSelected = selectedVessel === v.id;
+      const isSource = v.id === 'DEMO-MMSI-001';
+      const isDark = v.id === 'DEMO-RADAR-005';
+
+      let markerColor = '#00ff88'; // normal green
+      if (isSource) markerColor = '#ff3333';
+      else if (isDark) markerColor = '#ffb700';
+      
+      const scale = isSelected ? 1.3 : (isSource ? 1.1 : 1.0);
+      const strokeWidth = isSelected ? 3 : 1.5;
+      const strokeColor = isSelected ? '#ffffff' : '#000000';
+
+      const state = getVesselStateAtTime(v.id, playbackTime, playbackData, data.vessels, data.attribution);
+      if (!state || !state.hasValidTelemetry) {
+        if (markersRef.current[v.id]) markersRef.current[v.id].getElement().style.display = 'none';
+        return;
       }
 
-      if (pastCoords.length > 1) {
-        pastFeatures.push({
-          type: 'Feature',
-          properties: { vessel_id: track.vessel_id, type: trackType, isSelected },
-          geometry: { type: 'LineString', coordinates: pastCoords }
-        });
+      if (markersRef.current[v.id]) markersRef.current[v.id].getElement().style.display = 'block';
+
+      const rotation = state.heading || 0;
+      const pos = { lat: state.lat, lon: state.lon };
+
+      // Real Ship SVG (Directional)
+      const svg = `
+        <svg width="24" height="24" viewBox="0 0 24 24" style="transform: rotate(${rotation}deg) scale(${scale}); transition: transform 0.2s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <path d="M12 2 L20 20 L12 17 L4 20 Z" fill="${markerColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+        </svg>
+      `;
+      
+      const labelHtml = `
+        <div style="
+          position: absolute; 
+          left: 14px; top: -14px; 
+          background: rgba(0,0,0,0.85); 
+          color: ${markerColor}; 
+          border: 1px solid ${markerColor}; 
+          border-radius: 4px; 
+          padding: 2px 6px; 
+          font-size: 10px; 
+          font-weight: 600; 
+          white-space: nowrap;
+          pointer-events: none;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+          display: ${(isSelected || isSource || isDark) ? 'block' : 'none'};
+        ">
+          ${isSource ? 'SOURCE: ' : isDark ? '' : ''}${isDark ? 'DARK VESSEL' : v.id}
+        </div>
+      `;
+
+      const el = document.createElement('div');
+      el.style.position = 'relative';
+      el.style.cursor = 'pointer';
+      // Use CSS hover to show label if not already block
+      if (!isSelected && !isSource && !isDark) {
+         const style = document.createElement('style');
+         style.innerHTML = `
+           .vessel-lbl-${v.id} { display: none; }
+           .vessel-wrap-${v.id}:hover .vessel-lbl-${v.id} { display: block !important; }
+         `;
+         el.appendChild(style);
+         el.innerHTML += `<div class="vessel-wrap-${v.id}">${svg}<div class="vessel-lbl-${v.id}" style="position:absolute;left:14px;top:-14px;background:rgba(0,0,0,0.8);color:#fff;border:1px solid #aaa;border-radius:4px;padding:2px 6px;font-size:10px;white-space:nowrap;z-index:999;">${v.id}</div></div>`;
+      } else {
+         el.innerHTML = svg + labelHtml;
       }
       
-      if (futureCoords.length > 1) {
-        futureFeatures.push({
-          type: 'Feature',
-          properties: { vessel_id: track.vessel_id, type: trackType, isSelected },
-          geometry: { type: 'LineString', coordinates: futureCoords }
-        });
-      }
+      el.onclick = () => {
+        setSelectedVessel(isSelected ? null : v.id);
+        m.flyTo({ center: [pos.lon, pos.lat], zoom: Math.max(m.getZoom(), 11) });
+      };
 
-      if (markersRef.current[track.vessel_id] && pastCoords.length > 0) {
-         markersRef.current[track.vessel_id].setLngLat(pastCoords[pastCoords.length - 1] as [number, number]);
+      if (!markersRef.current[v.id]) {
+        markersRef.current[v.id] = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([pos.lon, pos.lat])
+          .addTo(m);
+      } else {
+        markersRef.current[v.id].setLngLat([pos.lon, pos.lat]);
+        const oldEl = markersRef.current[v.id].getElement();
+        oldEl.innerHTML = el.innerHTML;
+        oldEl.onclick = el.onclick;
       }
     });
-
-    const srcPast = mapRef.current.getSource('dynamic-tracks-src') as maplibregl.GeoJSONSource;
-    const srcFuture = mapRef.current.getSource('dynamic-tracks-future-src') as maplibregl.GeoJSONSource;
-    if (srcPast) srcPast.setData({ type: 'FeatureCollection', features: pastFeatures });
-    if (srcFuture) srcFuture.setData({ type: 'FeatureCollection', features: futureFeatures });
-
-  }, [playbackTime, playbackData, data, selectedVessel]);
+    
+  }, [data, playbackData, selectedVessel, setSelectedVessel]);
 
   return (
-    <div className="relative w-full h-full bg-slate-900" id="satmap">
+    <div className="relative w-full h-full bg-navy-900 overflow-hidden">
       <div ref={mapContainer} className="w-full h-full" />
       
-      {/* ── Top Right Controls ── */}
-      <div className="absolute top-4 right-4 flex gap-2 z-20">
+      {/* Top Right Controls */}
+      <div className="absolute top-4 right-4 flex space-x-2 z-10">
+        
+        {/* Layers */}
         <div className="relative">
-          <button onClick={() => { setPanelOpen(!panelOpen); setFilterOpen(false); setTimeOpen(false); }} className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
-            Layers <ChevronDown className="w-3.5 h-3.5" />
+          <button 
+            onClick={() => { setPanelOpen(!panelOpen); setFilterOpen(false); setTimeOpen(false); }}
+            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+          >
+            <span>Layers</span>
+            <ChevronDown size={16} />
           </button>
+          
           {panelOpen && (
-            <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 w-48 p-2 flex flex-col gap-1 text-xs">
-              <LayerRow label="True Color (Offline)" checked={false} onChange={() => {}} />
-              <LayerRow label="Oil Spill (AI)" checked={layers.slick} onChange={(v: boolean) => setLayers({ ...layers, slick: v, sar: v })} />
-              <LayerRow label="Drift Origin & Heatmap" checked={layers.driftOrigin} onChange={(v: boolean) => setLayers({ ...layers, driftOrigin: v, driftHeatmap: v })} />
-              <LayerRow label="Forward Forecast" checked={layers.driftForecast} onChange={(v: boolean) => setLayers({ ...layers, driftForecast: v })} />
-              <LayerRow label="Vessel Tracking" checked={layers.vesselSelectedTrack} onChange={(v: boolean) => {
-                 setLayers({ ...layers, vesselSelectedTrack: v, vesselOtherTracks: v, vesselCurrentPosition: v });
-              }} />
-              <LayerRow label="EEZ Boundaries" checked={false} onChange={() => {}} />
+            <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded shadow-lg p-4 border border-gray-100 flex flex-col space-y-3 z-50">
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.sar} onChange={e => setLayers({ ...layers, sar: e.target.checked })} />
+                <span>SAR Background</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.unet} onChange={e => setLayers({ ...layers, unet: e.target.checked })} />
+                <span>U-Net Model Mask</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.slick} onChange={e => setLayers({ ...layers, slick: e.target.checked })} />
+                <span>Oil Spill Polygon</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.driftOrigin} onChange={e => setLayers({ ...layers, driftOrigin: e.target.checked })} />
+                <span>Backward Drift Origin</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.driftHeatmap} onChange={e => setLayers({ ...layers, driftHeatmap: e.target.checked })} />
+                <span>Drift Heatmap</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.driftForecast} onChange={e => setLayers({ ...layers, driftForecast: e.target.checked })} />
+                <span>Forward Forecast (+4h)</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm text-gray-700 font-medium cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  checked={layers.vesselTracks} onChange={e => setLayers({ ...layers, vesselTracks: e.target.checked })} />
+                <span>Vessel Tracks</span>
+              </label>
             </div>
           )}
         </div>
-        
+
+        {/* Filter */}
         <div className="relative">
-          <button onClick={() => { setFilterOpen(!filterOpen); setPanelOpen(false); setTimeOpen(false); }} className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
-            Filter <ChevronDown className="w-3.5 h-3.5" />
+          <button 
+            onClick={() => { setFilterOpen(!filterOpen); setPanelOpen(false); setTimeOpen(false); }}
+            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+          >
+            <span>Filter</span>
+            <ChevronDown size={16} />
           </button>
-          {filterOpen && (
-             <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 p-3 text-xs text-slate-500 italic w-40 text-center">
-                Filters active from Global Timeline
-             </div>
-          )}
         </div>
-        
+
+        {/* Case Timeline */}
         <div className="relative">
-          <button onClick={() => { setTimeOpen(!timeOpen); setPanelOpen(false); setFilterOpen(false); }} className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
-            Case Timeline <ChevronDown className="w-3.5 h-3.5" />
+          <button 
+            onClick={() => { setTimeOpen(!timeOpen); setPanelOpen(false); setFilterOpen(false); }}
+            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
+          >
+            <span>Case Timeline</span>
+            <ChevronDown size={16} />
           </button>
-          {timeOpen && (
-             <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 p-2 flex flex-col gap-1 text-xs w-40">
-                <button className="text-left px-2 py-1.5 hover:bg-slate-50 font-bold text-navy-900 rounded">Current Demo</button>
-                <button className="text-left px-2 py-1.5 hover:bg-slate-50 text-slate-600 rounded">Historical Playback</button>
-             </div>
-          )}
         </div>
+
       </div>
 
-      {/* ── Compact Legend ── */}
-      <div className="absolute bottom-6 left-4 z-20">
-        <button
+      {/* Legend */}
+      <div className="absolute bottom-6 left-4 z-10 w-48">
+        <button 
           onClick={() => setLegendOpen(!legendOpen)}
-          className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50 mb-1"
+          className="w-full flex items-center justify-between px-3 py-2 bg-white text-gray-800 rounded shadow hover:bg-gray-50 font-medium text-sm transition-colors"
         >
-          {legendOpen ? '▼ Legend' : '▶ Legend'}
+          <span className="flex items-center"><Droplet size={14} className="mr-2" /> Legend</span>
+          <ChevronDown size={16} className={`transform transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
         </button>
+        
         {legendOpen && (
-          <div className="bg-white/95 backdrop-blur text-slate-800 p-2.5 rounded border border-slate-200 text-[10px] shadow-lg min-w-[160px] space-y-1">
-            <LegendItem color="#ff4500" dashed={false} label="Oil Spill" fill />
-            <LegendItem color="#06b6d4" dashed label="Drift Origin" fill />
-            <LegendItem color="#fb923c" dashed={false} label="Drift Heatmap" fill />
-            <LegendItem color="#a855f7" dashed label="Forecast" fill />
-            <LegendItem color="#ef4444" dashed={false} label="Source Vessel" />
-            <LegendItem color="#f59e0b" dashed label="Dark Vessel" />
-            <LegendItem color="#10b981" dashed label="Other Vessels" />
+          <div className="mt-2 bg-white rounded shadow-lg p-3 border border-gray-100 flex flex-col space-y-2">
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="w-3 h-3 bg-[#ff2200] opacity-80 mr-2 rounded-sm border border-[#ff4500]"></span>
+              Oil Spill
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="w-3 h-3 bg-[#00ffff] opacity-80 mr-2 rounded-sm border border-[#00ffff]"></span>
+              Drift Origin
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <div className="w-3 h-3 bg-gradient-to-r from-yellow-300 to-red-500 mr-2 rounded-sm"></div>
+              Drift Heatmap
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="w-3 h-3 bg-[#ff00ff] opacity-50 mr-2 rounded-sm"></span>
+              Forecast
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="w-3 h-1 bg-[#ff3333] mr-2"></span>
+              Source Vessel
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="w-3 h-1 bg-[#ffb700] mr-2 border-b border-dashed border-white"></span>
+              Dark Vessel
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="w-3 h-1 bg-[#00ff88] mr-2"></span>
+              Other Vessels
+            </div>
           </div>
         )}
       </div>
 
-      {/* ── Minimap ── */}
-      <div className="absolute bottom-6 right-4 z-20 w-32 h-24 bg-slate-800 border-2 border-white rounded shadow-lg overflow-hidden flex items-center justify-center relative pointer-events-none">
-         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/India_location_map.svg/1024px-India_location_map.svg.png" 
-              alt="India Map" 
-              className="w-full h-full object-cover opacity-70" />
-         <div className="absolute bottom-6 right-8 w-6 h-4 border-2 border-red-500 rounded-sm shadow-[0_0_4px_rgba(255,0,0,0.5)] bg-red-500/20"></div>
+      {/* Mini-map */}
+      <div className="absolute bottom-6 right-4 z-10 w-40 h-28 bg-gray-900 border border-gray-700 shadow-xl rounded overflow-hidden">
+         <div className="w-full h-full relative" style={{ backgroundImage: 'url(https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/4/7/11)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.8 }}>
+            {/* Viewport indicator for Chennai area */}
+            <div className="absolute border border-white bg-white/20" style={{ left: '60%', top: '45%', width: '15%', height: '10%' }}></div>
+            <div className="absolute bottom-1 right-2 text-[8px] text-white/70 font-mono tracking-widest">OCEANWATCH AI</div>
+         </div>
       </div>
       
-      {/* ── Forecast Warning ── */}
-      {layers.driftForecast && (
-        <div className="absolute top-14 right-4 z-10 bg-amber-100/90 backdrop-blur border border-amber-300 text-amber-800 px-3 py-1.5 rounded text-[10px] font-bold shadow">
-          ⚠ DEMONSTRATION FORECAST<br/>
-          <span className="font-normal text-[9px]">Model projection anchored to detection time.</span>
-        </div>
-      )}
-
-      {/* ── Data Provenance Badge ── */}
-      <div className="absolute bottom-2 left-2 z-10 bg-black/70 text-white/80 px-2 py-1 rounded text-[8px] font-mono uppercase tracking-widest pointer-events-none">
-        Synthetic Demo · OceanWatch AI
-      </div>
-    </div>
-  );
-}
-
-function LayerRow({ label, checked, onChange }: any) {
-  return (
-    <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 rounded px-2 py-1.5 transition-colors">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-blue-600 rounded-full" />
-      <span className={checked ? "font-bold text-navy-900" : "font-medium text-slate-700"}>{label}</span>
-    </label>
-  );
-}
-
-function LegendItem({ color, dashed, label, fill }: any) {
-  return (
-    <div className="flex items-center gap-2 py-0.5">
-      {fill ? (
-        <div style={{ width: 12, height: 8, background: color, opacity: 0.5, borderRadius: 1, border: `1px solid ${color}` }} />
-      ) : (
-        <div style={{ width: 12, height: 0, borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${color}` }} />
-      )}
-      <span>{label}</span>
     </div>
   );
 }
