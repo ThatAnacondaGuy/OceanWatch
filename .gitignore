@@ -24,3 +24,7 @@ models/
 qa_output/
 runs/
 *.pt
+
+# Logs
+logs/
+*.log

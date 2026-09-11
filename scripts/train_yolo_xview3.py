@@ -10,7 +10,7 @@ def main():
     data_yaml = os.path.abspath("data/yolo_dataset/dataset.yaml")
     
     print("1. Training YOLOv8n on CFAR candidates...")
-    model = YOLO("yolov8n.pt")
+    model = YOLO("models/yolov8n.pt")
     
     # Controlled run: 5 epochs, imgsz=128
     results = model.train(

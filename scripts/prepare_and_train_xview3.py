@@ -157,7 +157,7 @@ def build_dataset():
 
 def train_and_eval():
     print("\n2. Training YOLOv8n on Real xView3 Tiny...")
-    model = YOLO("yolov8n.pt")
+    model = YOLO("models/yolov8n.pt")
     out_dir = "data/yolo_real"
     
     model.train(
