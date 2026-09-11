@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import MapLibreMap from '../components/map/MapLibreMap';
+import DashboardMap from '../components/map/DashboardMap';
 import { 
   Droplet, Ship, ShieldCheck, Clock, Calendar, 
-  ChevronDown, ChevronRight,
+  ChevronRight,
   Wind, Waves, Compass, ArrowRight, MapPin, Search as SearchIcon, FileText, Download
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -99,39 +99,9 @@ export default function DashboardScreen() {
           
           {/* Map Area */}
           <div className="flex-1 relative bg-slate-900">
-            <MapLibreMap showLayerPanel={false} />
+            <DashboardMap />
             
-            {/* Map Overlay Controls */}
-            <div className="absolute top-4 right-4 flex gap-2 z-10">
-              <button className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
-                Layers <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-              <button className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
-                Filter <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-              <button className="bg-white border border-slate-200 text-navy-900 text-xs font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 hover:bg-slate-50">
-                Last 24 Hours <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-            </div>
             
-            {/* Layer Menu Example Panel */}
-            <div className="absolute top-14 right-32 bg-white rounded-lg shadow-lg border border-slate-200 w-48 p-2 z-10 flex flex-col gap-1 text-xs">
-               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">True Color</span>
-               </label>
-               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                  <input type="radio" name="layer" defaultChecked className="accent-blue-600" /> <span className="font-bold text-navy-900">Oil Spill (AI)</span>
-               </label>
-               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">Vessel Tracking</span>
-               </label>
-               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">Wind & Currents</span>
-               </label>
-               <label className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                  <input type="radio" name="layer" className="accent-blue-600" /> <span className="font-medium text-slate-700">EEZ Boundaries</span>
-               </label>
-            </div>
           </div>
         </div>
         
