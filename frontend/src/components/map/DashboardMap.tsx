@@ -97,7 +97,7 @@ export default function DashboardMap() {
       // All Vessels
       data.vessels.forEach((v: any) => bounds.extend([v.position.lon, v.position.lat]));
       // Apply FitBounds
-      m.fitBounds(bounds, { padding: { top: 80, bottom: 120, left: 200, right: 80 }, duration: 0 });
+      m.fitBounds(bounds, { padding: { top: 120, bottom: 160, left: 320, right: 120 }, duration: 0 });
 
 
     m.on('load', () => {
@@ -153,31 +153,35 @@ export default function DashboardMap() {
 
       // Slick Centroid Label + Marker
       const slickEl = document.createElement('div');
+      slickEl.style.cursor = 'pointer';
       slickEl.innerHTML = `
-        <div style="background: rgba(255,0,0,0.1); border: 2px solid #ff2200; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px #ff2200;"></div>
-        <div style="margin-top: -12px; margin-left: 12px; background: rgba(0,0,0,0.85); border: 1px solid #ff2200; padding: 6px 10px; border-radius: 4px; pointer-events: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.5);">
-          <div style="color: #ff2200; font-weight: bold; font-size: 11px; letter-spacing: 0.5px;">DETECTED OIL SLICK</div>
-          <div style="color: #ccc; font-size: 10px; margin-top: 3px;">Area: ${data.slick.area} px (Relative)</div>
-          <div style="color: #ccc; font-size: 10px;">Validation: ${data.slick.validation_status}</div>
-          <div style="color: #66b2ff; font-size: 10px; margin-top: 3px;">ATTENTION U-NET</div>
+        <div style="background: rgba(255,34,0,0.8); width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%);"></div>
+        <div style="position: absolute; margin-top: -10px; margin-left: 8px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,34,0,0.4); padding: 2px 4px; border-radius: 3px; pointer-events: none; white-space: nowrap;">
+          <div style="color: #ff2200; font-weight: 600; font-size: 10px;">DETECTED OIL SLICK <span style="color:#aaa;font-weight:normal;">${data.slick.area}px</span></div>
         </div>
       `;
-      new maplibregl.Marker({ element: slickEl, offset: [100, 80] })
+      const popupHtml = `
+        <div style="font-family: system-ui; font-size: 11px; color: #1e293b; min-width: 150px; padding: 4px;">
+          <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 4px;">Detected Oil Slick</div>
+          <div><b>Area:</b> ${data.slick.area} px (Relative)</div>
+          <div><b>Geometry:</b> Irregular Polygon</div>
+          <div><b>Validation:</b> ${data.slick.validation_status}</div>
+          <div><b>Model:</b> ATTENTION U-NET</div>
+        </div>
+      `;
+      new maplibregl.Marker({ element: slickEl })
         .setLngLat([data.slick.centroid.lon, data.slick.centroid.lat])
+        .setPopup(new maplibregl.Popup({ offset: 10, closeButton: false }).setHTML(popupHtml))
         .addTo(m);
 
       // Drift Origin Target
       const originEl = document.createElement('div');
       originEl.innerHTML = `
         <div style="position: relative;">
-          <div style="position: absolute; border: 2px solid #00ffff; width: 24px; height: 24px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 8px #00ffff; pointer-events: none;"></div>
+          <div style="position: absolute; border: 1px dashed #00ffff; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;"></div>
           <div style="position: absolute; width: 4px; height: 4px; background: #00ffff; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;"></div>
-          <div style="position: absolute; width: 2px; height: 10px; background: #00ffff; top: -18px; left: -1px; pointer-events: none;"></div>
-          <div style="position: absolute; width: 2px; height: 10px; background: #00ffff; bottom: -18px; left: -1px; pointer-events: none;"></div>
-          <div style="position: absolute; width: 10px; height: 2px; background: #00ffff; left: -18px; top: -1px; pointer-events: none;"></div>
-          <div style="position: absolute; width: 10px; height: 2px; background: #00ffff; right: -18px; top: -1px; pointer-events: none;"></div>
-          <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.8); border: 1px solid #00ffff; padding: 4px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none;">
-            <div style="color: #00ffff; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">BACKWARD DRIFT ORIGIN</div>
+          <div style="position: absolute; top: 6px; left: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,255,255,0.3); padding: 2px 4px; border-radius: 3px; white-space: nowrap; pointer-events: none;">
+            <div style="color: #00ffff; font-weight: 600; font-size: 9px;">BACKWARD ORIGIN</div>
           </div>
         </div>
       `;
@@ -214,7 +218,7 @@ export default function DashboardMap() {
 
       // Environmental Vectors (Subtle)
       const windEl = document.createElement('div');
-      windEl.innerHTML = `<div style="color: #fff; font-size: 10px; opacity: 0.8; text-shadow: 1px 1px 2px #000;">WIND ↗</div>`;
+      windEl.innerHTML = `<div style="color: #aaa; font-size: 9px; font-weight: 500; opacity: 0.7;">WIND ↗</div>`;
       new maplibregl.Marker({ element: windEl }).setLngLat([80.32, 13.20]).addTo(m);
 
       // Source Relationship Line
@@ -232,7 +236,7 @@ export default function DashboardMap() {
         id: 'source-relationship-line',
         type: 'line',
         source: 'source-relationship',
-        paint: { 'line-color': '#00ffff', 'line-width': 1.5, 'line-dasharray': [4, 4], 'line-opacity': 0.5 }
+        paint: { 'line-color': '#ff3333', 'line-width': 1, 'line-dasharray': [4, 4], 'line-opacity': 0.4 }
       });
     });
   }, [data, boundsCoords]); // Init once
@@ -258,7 +262,7 @@ export default function DashboardMap() {
     setVis('slick-glow', layers.slick);
     setVis('slick-fill', layers.slick);
     setVis('slick-line', layers.slick);
-    setVis('slick-bbox-line', layers.slick);
+    // slick bbox removed for cleaner visual
     if(layers.slick) setOp('slick-fill', layers.slickOpacity, 'fill');
 
     setVis('drift-heatmap-layer', layers.driftHeatmap);
@@ -317,20 +321,20 @@ export default function DashboardMap() {
       const labelHtml = `
         <div style="
           position: absolute; 
-          left: 14px; top: -14px; 
-          background: rgba(0,0,0,0.85); 
+          left: 12px; top: -12px; 
+          background: rgba(0,0,0,0.7); 
           color: ${markerColor}; 
           border: 1px solid ${markerColor}; 
-          border-radius: 4px; 
-          padding: 2px 6px; 
-          font-size: 10px; 
+          border-radius: 3px; 
+          padding: 2px 4px; 
+          font-size: 9px; 
           font-weight: 600; 
           white-space: nowrap;
           pointer-events: none;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.5);
           display: ${(isSelected || isSource || isDark) ? 'block' : 'none'};
         ">
-          ${isSource ? 'SOURCE: ' : isDark ? '' : ''}${isDark ? 'DARK VESSEL' : v.id}
+          ${isSource ? 'SOURCE #1' : isDark ? 'DARK VESSEL' : v.id}
         </div>
       `;
 
