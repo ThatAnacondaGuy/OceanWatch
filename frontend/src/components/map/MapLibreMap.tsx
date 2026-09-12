@@ -58,7 +58,12 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
     const bounds = new maplibregl.LngLatBounds();
     bounds.extend([data.slick.centroid.lon, data.slick.centroid.lat]);
     bounds.extend([data?.drift?.origin?.lon, data?.drift?.origin?.lat]);
-    data?.vessels.forEach(v => bounds.extend([v.position.lon, v.position.lat]));
+    data?.vessels.forEach(v => {
+      const state = getVesselStateAtTime(v.id, playbackTime, playbackData, data.vessels, data.attribution);
+      if (state && state.lon && state.lat) {
+        bounds.extend([state.lon, state.lat]);
+      }
+    });
     mapRef.current.fitBounds(bounds, { padding: 60, maxZoom: 13, duration: 1500 });
   }, [data]);
 
@@ -396,7 +401,10 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
         });
 
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-          .setLngLat([v.position.lon, v.position.lat])
+          .setLngLat([
+    getVesselStateAtTime(v.id, playbackTime, playbackData, data?.vessels || [], data?.attribution).lon || v.position.lon,
+    getVesselStateAtTime(v.id, playbackTime, playbackData, data?.vessels || [], data?.attribution).lat || v.position.lat
+  ])
           .addTo(m);
         markersRef.current[v.id] = marker;
       });

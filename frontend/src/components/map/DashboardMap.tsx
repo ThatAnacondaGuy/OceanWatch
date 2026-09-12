@@ -95,7 +95,12 @@ export default function DashboardMap() {
       // Offshore context (East)
       bounds.extend([80.65, 13.2]);
       // All Vessels
-      data.vessels.forEach((v: any) => bounds.extend([v.position.lon, v.position.lat]));
+      data.vessels.forEach((v: any) => {
+        const state = getVesselStateAtTime(v.id, playbackTime, playbackData, data.vessels, data.attribution);
+        if (state && state.lon && state.lat) {
+          bounds.extend([state.lon, state.lat]);
+        }
+      });
       // Apply FitBounds
       m.fitBounds(bounds, { padding: { top: 120, bottom: 160, left: 320, right: 120 }, duration: 0 });
 
@@ -309,7 +314,7 @@ export default function DashboardMap() {
       if (markersRef.current[v.id]) markersRef.current[v.id].getElement().style.display = 'block';
 
       const rotation = state.heading || 0;
-      const pos = { lat: state.lat, lon: state.lon };
+      const pos = { lat: state.lat, lon: state.lon }; console.log("VESSEL_POS", v.id, pos.lon, pos.lat);
 
       // Real Ship SVG (Directional)
       const svg = `
