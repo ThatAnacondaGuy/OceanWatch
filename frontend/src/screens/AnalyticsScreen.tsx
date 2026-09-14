@@ -14,17 +14,17 @@ export default function AnalyticsScreen() {
     <div className="flex flex-col h-full p-4 gap-4 overflow-y-auto">
        {/* Top Metrics Row */}
        <div className="flex gap-4 shrink-0 overflow-x-auto pb-1">
-          <StatCard icon={<BarChart className="w-5 h-5" />} label="Reports Generated" value="1,248" trend="+15" trendColor="text-emerald-500" bg="bg-blue-50" fg="text-blue-500" />
-          <StatCard icon={<FileSearch className="w-5 h-5" />} label="Avg Confidence" value="84.2%" trend="+2.1%" trendColor="text-emerald-500" bg="bg-indigo-50" fg="text-indigo-500" />
-          <StatCard icon={<PieChart className="w-5 h-5" />} label="False Positives" value="3.1%" trend="-0.4%" trendColor="text-emerald-500" bg="bg-amber-50" fg="text-amber-500" />
-          <StatCard icon={<Users className="w-5 h-5" />} label="Active Agencies" value="12" subtext="Global" bg="bg-emerald-50" fg="text-emerald-500" />
+          <StatCard icon={<BarChart className="w-5 h-5" />} label="Reports Generated" value="1" bg="bg-blue-50" fg="text-blue-500" />
+          <StatCard icon={<FileSearch className="w-5 h-5" />} label="Attribution Method" value="7-Factor" bg="bg-indigo-50" fg="text-indigo-500" />
+          <StatCard icon={<PieChart className="w-5 h-5" />} label="Validation Method" value="GLCM + Wind" bg="bg-amber-50" fg="text-amber-500" />
+          <StatCard icon={<Users className="w-5 h-5" />} label="Active Agencies" value="N/A" subtext="Demo" bg="bg-emerald-50" fg="text-emerald-500" />
           <div className="flex-1 bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex items-center justify-between min-w-[200px]">
              <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">System Status</span>
-                <span className="text-sm font-black text-navy-900 mt-0.5">Operational</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">All systems nominal</span>
+                <span className="text-sm font-black text-navy-900 mt-0.5">Demo Mode</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Demonstration data</span>
              </div>
-             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-6 h-6" />
              </div>
           </div>
@@ -95,7 +95,7 @@ export default function AnalyticsScreen() {
                       <td className="py-2 font-bold text-slate-400">{i + 1}</td>
                       <td className="py-2 font-bold text-navy-900 flex items-center gap-1.5">
                         {r.id.replace('DEMO-', '')}
-                        {i === 0 && <span className="bg-red-100 text-red-700 text-[8px] px-1 py-0.5 rounded uppercase">Source</span>}
+                        {i === 0 && <span className="bg-red-100 text-red-700 text-[8px] px-1 py-0.5 rounded uppercase">Candidate</span>}
                       </td>
                       <td className="py-2">
                         <span className={clsx("px-1.5 py-0.5 rounded text-[9px] font-bold",
@@ -166,7 +166,7 @@ export default function AnalyticsScreen() {
               </div>
             </div>
             <div className="p-3 bg-slate-50 text-[9px] text-slate-500 border-t border-slate-100 rounded-b italic">
-              Factor scores represent relative correlation confidence from the deterministic AI attribution pipeline. Click any bar to select that candidate.
+              Factor scores are relative evidence-ranking measures from the interpretable attribution pipeline. They do not represent probability of legal responsibility. Click any bar to select that candidate.
             </div>
           </div>
         </div>

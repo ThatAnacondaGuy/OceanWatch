@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Footer */}
           <footer className="h-8 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[10px] text-slate-500 shrink-0 z-10 relative">
              <span>OceanWatch AI: Forensic Oil Spill Detection & Vessel Attribution | Demonstration Release</span>
-             <span className="font-bold text-navy-800 flex items-center gap-2">Government-style demonstration interface <div className="w-4 h-4 bg-blue-100 text-blue-600 flex items-center justify-center rounded-sm">≈</div></span>
+             <span className="font-bold text-navy-800 flex items-center gap-2">NTRO Problem Statement 26143 · Smart India Hackathon <div className="w-4 h-4 bg-blue-100 text-blue-600 flex items-center justify-center rounded-sm">≈</div></span>
           </footer>
         </div>
       </div>

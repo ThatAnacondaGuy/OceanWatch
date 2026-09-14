@@ -23,7 +23,7 @@ export default function DashboardScreen() {
      else if (val.toUpperCase().includes('RADAR-005')) setSelectedVessel('DEMO-RADAR-005');
   };
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Live Map');
+  const [activeTab, setActiveTab] = useState('Investigation Map');
 
   if (!data) return null;
 
@@ -52,9 +52,9 @@ export default function DashboardScreen() {
         />
         <MetricCard 
           icon={<div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600"><ShieldCheck className="w-5 h-5 fill-current" /></div>}
-          title="Detection Accuracy"
-          value="94.7%"
-          trend="AI Model (Sentinel-1/2)"
+          title="Model Confidence"
+          value="Attention U-Net"
+          trend="ResNet-34 · scSE Decoder"
         />
         <MetricCard 
           icon={<div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600"><Clock className="w-5 h-5" /></div>}
@@ -68,8 +68,8 @@ export default function DashboardScreen() {
             <span className="font-bold text-navy-900 text-sm">Tue, 28 Jan 2017<br/>04:00 UTC</span>
           </div>
           <div className="flex items-center gap-2 text-xs font-bold text-navy-900">
-            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
-            System Operational
+            <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+            Demo Playback
           </div>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function DashboardScreen() {
           {/* Map Header / Tabs */}
           <div className="h-12 border-b border-slate-200 flex items-center px-2 bg-white shrink-0 justify-between">
             <div className="flex h-full">
-              {['Live Map', 'Satellite View', 'Analysis Layers', 'Historical Data'].map(tab => (
+              {['Investigation Map', 'Satellite View', 'Analysis Layers', 'Historical Data'].map(tab => (
                 <button 
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -168,7 +168,7 @@ export default function DashboardScreen() {
             
             <div className="flex gap-3 mt-auto">
                <button 
-                 onClick={() => navigate('/incidents')}
+                 onClick={() => navigate('/demo/ennore')}
                  className="flex-1 bg-navy-900 hover:bg-navy-800 text-white font-bold py-2.5 rounded shadow text-xs transition-colors flex justify-center items-center gap-2">
                  View Details
                </button>

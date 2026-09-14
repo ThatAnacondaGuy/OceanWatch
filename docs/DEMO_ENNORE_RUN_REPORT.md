@@ -12,14 +12,15 @@ The pipeline successfully reproduced an end-to-end attribution workflow on a con
 
 ## Results
 - Slick detected: 13.1324 N, 80.3487 E
-- Drift Origin (8h): ~13.2750 N, 80.4127 E
+- Drift Origin (8h): ~13.2719 N, 80.4117 E
 
 ### Attribution Ranking
-- Rank 1: DEMO-MMSI-001 (Prob: 42.1%)
-- Rank 2: DEMO-RADAR-005 (Prob: 21.9%)
-- Rank 3: DEMO-MMSI-002 (Prob: 14.2%)
-- Rank 4: DEMO-MMSI-003 (Prob: 12.5%)
-- Rank 5: DEMO-MMSI-004 (Prob: 9.3%)
+- Rank 1: DEMO-MMSI-001 (Prob: 28.9%)
+- Rank 2: DEMO-RADAR-005 (Prob: 24.8%)
+- Rank 3: DEMO-MMSI-002 (Prob: 16.9%)
+- Rank 4: DEMO-RADAR-005 (Prob: 14.9%)
+- Rank 5: DEMO-MMSI-003 (Prob: 11.7%)
+- Rank 6: DEMO-MMSI-004 (Prob: 2.9%)
 
 ## Validation
 PASS

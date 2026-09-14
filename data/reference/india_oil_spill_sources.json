@@ -1,0 +1,45 @@
+{
+    "sources_version": "1.0",
+    "sources": [
+        {
+            "incident_id": "IND-OS-2017-001",
+            "source_url": "https://www.thehindu.com/news/national/tamil-nadu/Human-error-fatigue-caused-Ennore-oil-spill/article17112046.ece",
+            "source_type": "News / Investigation Summary",
+            "organization": "The Hindu",
+            "publication_date": "2017-01-30",
+            "source_title": "Human error, fatigue caused Ennore oil spill",
+            "relevance": "Primary details of quantity and cause",
+            "access_date": "2026-09-14"
+        },
+        {
+            "incident_id": "IND-OS-2010-001",
+            "source_url": "https://cedre.fr/en/resources/spills/spills/msc-chitra",
+            "source_type": "Technical Database",
+            "organization": "Cedre",
+            "publication_date": "2010-08-10",
+            "source_title": "MSC Chitra - Spill Details",
+            "relevance": "Confirmed 800 tonnes spill quantity",
+            "access_date": "2026-09-14"
+        },
+        {
+            "incident_id": "IND-OS-2011-001",
+            "source_url": "https://pib.gov.in/newsite/PrintRelease.aspx?relid=74100",
+            "source_type": "Government Press Release",
+            "organization": "Press Information Bureau, Ministry of Defence",
+            "publication_date": "2011-08-09",
+            "source_title": "Oil Spill from Sunken Ship Mv Rak Carrier",
+            "relevance": "Official quantities (290T HFO, 50T Diesel) and ICG operation details",
+            "access_date": "2026-09-14"
+        },
+        {
+            "incident_id": "IND-OS-2023-001",
+            "source_url": "https://www.thehindu.com/news/cities/chennai/cpcl-oil-spill-tnpcb-levies-environmental-compensation-of-73-crore/article67894982.ece",
+            "source_type": "News / Regulatory Document Reference",
+            "organization": "The Hindu",
+            "publication_date": "2024-02-28",
+            "source_title": "CPCL oil spill: TNPCB levies environmental compensation of Rs 73 crore",
+            "relevance": "Detailed quantity (517T) and impact assessment",
+            "access_date": "2026-09-14"
+        }
+    ]
+}

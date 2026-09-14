@@ -5,14 +5,13 @@ export function Header() {
   return (
     <header className="h-[72px] bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm relative w-full">
        <div className="flex items-center gap-6 h-full">
-          {/* Government/Identity Area */}
           <div className="flex items-center gap-3 pr-6 border-r border-slate-200 h-full py-3">
              <div className="w-10 h-10 flex items-center justify-center text-slate-700 bg-slate-50 rounded-full border border-slate-200">
                <Shield className="w-6 h-6" />
              </div>
              <div className="flex flex-col justify-center">
                 <span className="text-[13px] font-black text-navy-900 leading-tight">OceanWatch AI Platform</span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Government-Style Demo</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">NTRO Problem Statement 26143 · SIH Demonstration</span>
              </div>
           </div>
           
@@ -45,8 +44,8 @@ export function Header() {
                 DU
              </div>
              <div className="flex flex-col">
-                <span className="text-sm font-bold text-navy-900 leading-tight">Demo User</span>
-                <span className="text-[11px] text-slate-500">Nodal Officer (Ops)</span>
+                <span className="text-sm font-bold text-navy-900 leading-tight">Analyst</span>
+                <span className="text-[11px] text-slate-500">Investigation Analyst</span>
              </div>
              <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
           </div>

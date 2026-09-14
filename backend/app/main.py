@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.demo import router as demo_router
+from .api.incidents import router as incidents_router
 
 app = FastAPI(title="OceanWatch AI", description="Backend API")
 
@@ -15,6 +16,7 @@ app.add_middleware(
 )
 
 app.include_router(demo_router, prefix="/api")
+app.include_router(incidents_router, prefix="/api")
 
 # Static assets
 os.makedirs("artifacts/demo/ennore", exist_ok=True)

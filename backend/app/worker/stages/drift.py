@@ -121,9 +121,12 @@ class LagrangianDriftModel:
         return lons + dx_deg, lats + dy_deg
 
 class DriftEnsembleManager:
-    def __init__(self, wind_path, current_path):
+    def __init__(self, wind_path, current_path, current_source="cmems"):
         self.wind_adapter = EnvironmentalAdapter(wind_path, 'u10', 'v10', is_wind=True)
-        self.current_adapter = EnvironmentalAdapter(current_path, 'uo', 'vo', is_wind=False)
+        if current_source.lower() == "incois":
+            self.current_adapter = INCOISCurrentAdapter(current_path)
+        else:
+            self.current_adapter = EnvironmentalAdapter(current_path, 'uo', 'vo', is_wind=False)
         self.model = LagrangianDriftModel(self.wind_adapter, self.current_adapter)
 
     def run_ensemble(self, init_lons, init_lats, start_time, duration_hours=24, 
@@ -171,3 +174,113 @@ class DriftEnsembleManager:
             endpoints_lon, endpoints_lat, bins=grid_size, density=True
         )
         return heatmap, xedges, yedges
+
+from scipy.interpolate import griddata
+
+class INCOISCurrentAdapter:
+    def __init__(self, nc_path):
+        self.nc_path = nc_path
+        try:
+            # We open the dataset lazily
+            self.ds = xr.open_dataset(nc_path)
+            self.has_data = True
+            
+            # Extract bounds
+            self.lon_min = float(self.ds.LON.min())
+            self.lon_max = float(self.ds.LON.max())
+            self.lat_min = float(self.ds.LAT.min())
+            self.lat_max = float(self.ds.LAT.max())
+            self.time_min = self.ds.TIME.min().values
+            self.time_max = self.ds.TIME.max().values
+            
+            # Fill value to watch out for
+            self.fill_value = 1.2676506e+30
+        except (FileNotFoundError, OSError):
+            self.has_data = False
+
+    def get_velocity(self, lons, lats, time):
+        if not self.has_data:
+            raise OutOfBoundsError(f"Dataset missing for {self.nc_path}")
+            
+        time_np = np.datetime64(time)
+        if time_np < self.time_min or time_np > self.time_max:
+            raise OutOfBoundsError(f"Time {time} out of bounds [{self.time_min}, {self.time_max}].")
+
+        lons_wrapped = np.array(lons, dtype=float)
+        # INCOIS longitudes are 20 to 120 approx
+        if np.any(lons_wrapped < self.lon_min) or np.any(lons_wrapped > self.lon_max):
+            raise OutOfBoundsError(f"Longitudes out of spatial bounds [{self.lon_min}, {self.lon_max}].")
+            
+        lats_arr = np.array(lats, dtype=float)
+        if np.any(lats_arr < self.lat_min) or np.any(lats_arr > self.lat_max):
+            raise OutOfBoundsError(f"Latitudes out of spatial bounds [{self.lat_min}, {self.lat_max}].")
+
+        # To avoid loading the whole dataset and handle land-mask (fill_value) robustly,
+        # we extract a small spatio-temporal window around the requested points.
+        pad_deg = 0.5
+        min_lon, max_lon = lons_wrapped.min() - pad_deg, lons_wrapped.max() + pad_deg
+        min_lat, max_lat = lats_arr.min() - pad_deg, lats_arr.max() + pad_deg
+        
+        # We need the times bounding the requested time
+        # Find indices
+        time_idx = self.ds.TIME.searchsorted(time_np)
+        idx_start = max(0, int(time_idx) - 1)
+        idx_end = min(len(self.ds.TIME) - 1, int(time_idx) + 1)
+        t_start = self.ds.TIME[idx_start].values
+        t_end = self.ds.TIME[idx_end].values
+
+        # Slice dataset
+        ds_slice = self.ds.sel(
+            LAT=slice(min_lat, max_lat),
+            LON=slice(min_lon, max_lon),
+            TIME=slice(t_start, t_end),
+            DEPTH=0.0
+        )
+        
+        # Load arrays into memory for this chunk
+        u_chunk = ds_slice['UVEL'].values
+        v_chunk = ds_slice['VVEL'].values
+        lat_chunk = ds_slice['LAT'].values
+        lon_chunk = ds_slice['LON'].values
+        time_chunk = ds_slice['TIME'].values
+        
+        # Convert times to float for interpolation (seconds since epoch)
+        t_chunk_float = time_chunk.astype('datetime64[s]').astype(np.float64)
+        target_t_float = time_np.astype('datetime64[s]').astype(np.float64)
+        
+        # Mask out fill values
+        valid_mask = (u_chunk < 1e20) & (v_chunk < 1e20)
+        
+        # Prepare points for interpolation (TIME, LAT, LON)
+        T_grid, LAT_grid, LON_grid = np.meshgrid(t_chunk_float, lat_chunk, lon_chunk, indexing='ij')
+        
+        pts = np.column_stack((
+            T_grid[valid_mask], 
+            LAT_grid[valid_mask], 
+            LON_grid[valid_mask]
+        ))
+        u_vals = u_chunk[valid_mask]
+        v_vals = v_chunk[valid_mask]
+        
+        if len(pts) == 0:
+            raise OutOfBoundsError("All data points in the bounding box are masked (land).")
+
+        targets = np.column_stack((
+            np.full(len(lons_wrapped), target_t_float),
+            lats_arr,
+            lons_wrapped
+        ))
+        
+        # Interpolate
+        # Use linear interpolation, fallback to nearest if linear gives NaN (e.g., exactly on boundary)
+        u_interp = griddata(pts, u_vals, targets, method='linear')
+        v_interp = griddata(pts, v_vals, targets, method='linear')
+        
+        nan_mask = np.isnan(u_interp) | np.isnan(v_interp)
+        if np.any(nan_mask):
+            u_nearest = griddata(pts, u_vals, targets[nan_mask], method='nearest')
+            v_nearest = griddata(pts, v_vals, targets[nan_mask], method='nearest')
+            u_interp[nan_mask] = u_nearest
+            v_interp[nan_mask] = v_nearest
+
+        return u_interp, v_interp

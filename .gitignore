@@ -19,7 +19,9 @@ __pycache__/
 .idea/
 
 # Ignore massive data directories
-data/
+data/*
+!data/reference/
+!data/reference/**
 models/
 qa_output/
 runs/

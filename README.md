@@ -24,6 +24,21 @@ The system executes an automated pipeline that:
 
 ---
 
+## NTRO Problem Statement Context
+- This project addresses NTRO Smart India Hackathon Problem Statement 26143.
+- It operates as a post-event forensic attribution system.
+- Attribution scores are relative evidence rankings, not legal determinations.
+- Synthetic demo data is used for pipeline validation safely.
+
+---
+
+## Built vs Designed Convention
+To clearly communicate the system's current state versus its intended final capabilities, we utilize a "Built vs Designed" badge convention in the UI and documentation. 
+- **Built** refers to functional code and executing ML pipelines.
+- **Designed** refers to mockups and architectural endpoints intended for future sovereign integration.
+
+---
+
 ## 2. System Architecture
 
 ```text

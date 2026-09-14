@@ -54,10 +54,10 @@ export default function VesselTrackingScreen() {
         <div className="flex-1 bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex items-center justify-between min-w-[200px]">
            <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">System Status</span>
-              <span className="text-sm font-black text-navy-900 mt-0.5">Operational</span>
-              <span className="text-[10px] text-slate-400 mt-0.5">All systems nominal</span>
+              <span className="text-sm font-black text-navy-900 mt-0.5">Demo Mode</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">Demonstration data</span>
            </div>
-           <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+           <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6" />
            </div>
         </div>
@@ -109,7 +109,7 @@ export default function VesselTrackingScreen() {
           <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col min-h-[400px] overflow-hidden">
              <div className="flex items-center justify-between px-2 pt-2 border-b border-slate-100 bg-white z-10 shrink-0">
                 <div className="flex gap-1">
-                   {['Live Map', 'Tracks & History', 'AIS Gaps', 'Anomaly Detection'].map(tab => (
+                   {['Investigation Map', 'Tracks & History', 'AIS Gaps', 'Anomaly Detection'].map(tab => (
                      <button key={tab} onClick={() => setActiveTab(tab)}
                        className={`px-4 py-2.5 text-xs font-bold transition-colors border-b-2 ${activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-navy-900 hover:bg-slate-50 rounded-t'}`}>
                        {tab}

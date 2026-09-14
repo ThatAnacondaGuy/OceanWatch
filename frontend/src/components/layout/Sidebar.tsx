@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Activity, AlertTriangle, Navigation, Satellite, BarChart2, Leaf, Bell, Database, Users, HelpCircle, LogOut } from 'lucide-react';
+import { Home, Activity, AlertTriangle, Navigation, Satellite, BarChart2, Leaf, Bell, Database, Users, HelpCircle, LogOut, FileText } from 'lucide-react';
 import clsx from 'clsx';
 
 export function Sidebar() {
@@ -7,14 +7,15 @@ export function Sidebar() {
 
   const links = [
     { to: '/', icon: Home, label: 'Dashboard' },
-    { to: '/monitoring', icon: Activity, label: 'Live Monitoring' },
+    { to: '/monitoring', icon: Activity, label: 'Case Monitoring' },
     { to: '/incidents', icon: AlertTriangle, label: 'Spill Incidents' },
     { to: '/vessels', icon: Navigation, label: 'Vessel Tracking' },
     { to: '/satellite', icon: Satellite, label: 'Satellite Data' },
     { to: '/analytics', icon: BarChart2, label: 'Analytics & Reports' },
-    { to: '#', icon: Leaf, label: 'Environmental Impact', disabled: true },
-    { to: '#', icon: Bell, label: 'Alerts & Notifications', badge: 3, disabled: true },
-    { to: '#', icon: Database, label: 'Data Management', disabled: true },
+    { to: '/environment', icon: Leaf, label: 'Environmental Impact' },
+    { to: '/alerts', icon: Bell, label: 'Alerts & Notifications', badge: 3 },
+    { to: '/cases', icon: FileText, label: 'Case History' },
+    { to: '/data-management', icon: Database, label: 'Data Management' },
     { to: '#', icon: Users, label: 'Users & Access', disabled: true }
   ];
 
@@ -67,15 +68,8 @@ export function Sidebar() {
          </button>
          
          <div className="flex flex-col gap-1 items-start px-2 pb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-blue-300 font-bold text-sm tracking-wide">Clean Seas</span>
-              <div className="flex flex-col gap-0.5">
-                <div className="w-6 h-0.5 bg-orange-400 rounded-full" />
-                <div className="w-6 h-0.5 bg-white rounded-full" />
-                <div className="w-6 h-0.5 bg-green-500 rounded-full" />
-              </div>
-            </div>
-            <span className="text-white font-bold text-sm tracking-wide">Strong India</span>
+           <span className="text-[10px] text-slate-400 font-medium">NTRO · SIH · PS-26143</span>
+           <span className="text-[10px] text-slate-500">Post-Event Forensic Analysis</span>
          </div>
       </div>
     </div>

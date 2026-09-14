@@ -12,15 +12,15 @@ export default function SatelliteDataScreen() {
        <div className="flex gap-4 shrink-0 overflow-x-auto pb-1">
           <StatCard icon={<Satellite className="w-5 h-5" />} label="Sentinel-1 Scenes" value="2" trend="+1" trendColor="text-emerald-500" bg="bg-blue-50" fg="text-blue-500" />
           <StatCard icon={<Satellite className="w-5 h-5" />} label="Sentinel-2 Scenes" value="1" subtext="Demo area" bg="bg-emerald-50" fg="text-emerald-500" />
-          <StatCard icon={<Activity className="w-5 h-5" />} label="Data Availability" value="99.8%" subtext="Last 30 days" bg="bg-purple-50" fg="text-purple-500" />
-          <StatCard icon={<Database className="w-5 h-5" />} label="Total Data Volume" value="12.4 TB" subtext="Processed" bg="bg-amber-50" fg="text-amber-500" />
+          <StatCard icon={<Activity className="w-5 h-5" />} label="Data Availability" value="N/A" subtext="Demo dataset only" bg="bg-purple-50" fg="text-purple-500" />
+          <StatCard icon={<Database className="w-5 h-5" />} label="Total Data Volume" value="1.2 GB" subtext="Demo scene" bg="bg-amber-50" fg="text-amber-500" />
           <div className="flex-1 bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex items-center justify-between min-w-[200px]">
              <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">System Status</span>
-                <span className="text-sm font-black text-navy-900 mt-0.5">Operational</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">All systems nominal</span>
+                <span className="text-sm font-black text-navy-900 mt-0.5">Demo Mode</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Demonstration data</span>
              </div>
-             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-6 h-6" />
              </div>
           </div>
