@@ -126,8 +126,8 @@ export default function DashboardMap() {
 
       // 7. Forward forecast
       m.addSource('forecast', { type: 'geojson', data: '/api/assets/artifacts/demo/ennore/forward_forecast.geojson' });
-      m.addLayer({ id: 'forecast-fill', type: 'fill', source: 'forecast', paint: { 'fill-color': '#ff00ff', 'fill-opacity': 0.15 } });
-      m.addLayer({ id: 'forecast-line', type: 'line', source: 'forecast', paint: { 'line-color': '#ff00ff', 'line-width': 2, 'line-dasharray': [4, 2] } });
+      m.addLayer({ id: 'forecast-fill', type: 'fill', source: 'forecast', paint: { 'fill-color': '#ff00ff', 'fill-opacity': 0.15 }, filter: ['<=', 'forecast_hours', 0] });
+      m.addLayer({ id: 'forecast-line', type: 'line', source: 'forecast', paint: { 'line-color': '#ff00ff', 'line-width': 2, 'line-dasharray': [4, 2] }, filter: ['<=', 'forecast_hours', 0] });
 
       // 8. Slick polygon (Actual Detection)
       m.addSource('slick', { type: 'geojson', data: '/api/assets/artifacts/demo/ennore/detected_slick.geojson' });
@@ -289,6 +289,22 @@ export default function DashboardMap() {
   // Vessels Marker Sync
   useEffect(() => {
     if (!mapRef.current || !data) return;
+
+    if (playbackTime !== null && mapRef.current) {
+      const currentMap = mapRef.current;
+      const incidentTimeSec = 1485576000;
+      const diffHours = (playbackTime - incidentTimeSec) / 3600;
+      if (currentMap.getLayer('forecast-fill')) {
+         if (diffHours >= 0) {
+            currentMap.setFilter('forecast-fill', ['<=', 'forecast_hours', diffHours]);
+            currentMap.setFilter('forecast-line', ['<=', 'forecast_hours', diffHours]);
+         } else {
+            currentMap.setFilter('forecast-fill', ['<', 'forecast_hours', 0]);
+            currentMap.setFilter('forecast-line', ['<', 'forecast_hours', 0]);
+         }
+      }
+    }
+
     const m = mapRef.current;
     const vessels = data.vessels;
 

@@ -470,6 +470,22 @@ export default function MapComponent({ showLayerPanel = false }: Props) {
     const m = mapRef.current;
     if (!m || !m.isStyleLoaded() || !playbackData || !data) return;
 
+    if (playbackTime !== null && mapRef.current) {
+      const m = mapRef.current;
+      const incidentTimeSec = 1485576000;
+      const diffHours = (playbackTime - incidentTimeSec) / 3600;
+      if (m.getLayer('forecast-fill')) {
+         if (diffHours >= 0) {
+            m.setFilter('forecast-fill', ['<=', 'forecast_hours', diffHours]);
+            m.setFilter('forecast-line', ['<=', 'forecast_hours', diffHours]);
+         } else {
+            m.setFilter('forecast-fill', ['<', 'forecast_hours', 0]);
+            m.setFilter('forecast-line', ['<', 'forecast_hours', 0]);
+         }
+      }
+    }
+
+
     const currentVesselPositions: Record<string, {lat: number, lon: number}> = {};
     const pastFeatures: any[] = [];
     const futureFeatures: any[] = [];

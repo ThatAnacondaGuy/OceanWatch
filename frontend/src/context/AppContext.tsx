@@ -50,13 +50,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   
   const [layers, setLayers] = useState({
-    sar: true,
+    sar: false,
     sarOpacity: 0.25,
     unet: false,
     unetOpacity: 0.7,
     slick: true,
     driftOrigin: true,
-    driftHeatmap: true,
+    driftHeatmap: false,
     driftForecast: false,
     vessels: true,
     vesselSelectedTrack: true,

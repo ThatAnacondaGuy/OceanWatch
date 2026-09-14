@@ -35,38 +35,42 @@ def get_ennore_demo():
     except FileNotFoundError:
         val_report = {}
         
+
     # Read AIS data to get candidate real properties
-    ais_path = "data/demo/ennore/ais/ais_tracks.csv"
+    playback_path = "artifacts/demo/ennore/ais_playback.json"
     vessels_data = []
-    if os.path.exists(ais_path):
-        ais_df = pd.read_csv(ais_path)
-        for cand in ranked_candidates:
-            mmsi = cand["mmsi"]
-            v_df = ais_df[ais_df["MMSI"] == mmsi] if mmsi != "DEMO-RADAR-005" else pd.DataFrame()
-            if not v_df.empty:
-                v_df['dt'] = pd.to_datetime(v_df['BaseDateTime'])
-                incident_time = pd.to_datetime("2017-01-28T04:00:00")
-                closest = v_df.iloc[(v_df['dt'] - incident_time).abs().argsort()[:1]].iloc[0]
-                
-                vessels_data.append({
-                    "id": mmsi,
-                    "vessel_type": get_vessel_type_label(int(closest["VesselType"])),
-                    "position": {"lat": closest["LAT"], "lon": closest["LON"]},
-                    "heading": closest["COG"],
-                    "speed": closest["SOG"],
-                    "ais_status": "Active (Synthetic)",
-                    "synthetic_real_status": "synthetic_demo"
-                })
-            else:
-                vessels_data.append({
-                    "id": mmsi,
-                    "vessel_type": get_vessel_type_label(0),
-                    "position": scenario_meta.get("drift_origin", {"lat": 13.277, "lon": 80.413}),
-                    "heading": 0.0,
-                    "speed": 0.0,
-                    "ais_status": "Missing/Dark (Radar Only)",
-                    "synthetic_real_status": "synthetic_demo"
-                })
+    
+    playback_data = {}
+    if os.path.exists(playback_path):
+        with open(playback_path, "r") as f:
+            playback_data = json.load(f)
+            
+    for cand in ranked_candidates:
+        mmsi = cand["mmsi"]
+        if mmsi in playback_data and len(playback_data[mmsi]) > 0:
+            pts = playback_data[mmsi]
+            # Find point closest to 1485576000
+            closest = min(pts, key=lambda p: abs(p["time"] - 1485576000))
+            vessels_data.append({
+                "id": mmsi,
+                "vessel_type": get_vessel_type_label(0),  # Simplified for demo fallback
+                "position": {"lat": closest["lat"], "lon": closest["lon"]},
+                "heading": closest.get("heading", 0),
+                "speed": closest.get("speed", 0),
+                "ais_status": "Active (Synthetic)",
+                "synthetic_real_status": "synthetic_demo"
+            })
+        else:
+            vessels_data.append({
+                "id": mmsi,
+                "vessel_type": get_vessel_type_label(0),
+                "position": scenario_meta.get("drift_origin", {"lat": 13.277, "lon": 80.413}),
+                "heading": 0.0,
+                "speed": 0.0,
+                "ais_status": "Missing/Dark (Radar Only)",
+                "synthetic_real_status": "synthetic_demo"
+            })
+
 
     attribution_list = []
     for idx, c in enumerate(ranked_candidates):
